@@ -1,0 +1,47 @@
+{
+  "name": "@acme/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./env": "./src/env/index.ts",
+    "./db": "./src/db/index.ts",
+    "./db/schema": "./src/db/schema/index.ts",
+    "./redis": "./src/redis/index.ts",
+    "./log": "./src/lib/logger.ts",
+    "./email": "./src/email/index.ts",
+    "./auth": "./src/auth/index.ts",
+    "./auth/permissions": "./src/auth/permissions.ts"
+  },
+  "scripts": {
+    "auth:generate": "dotenv -e ../../.env -- pnpm dlx auth@latest generate --config src/auth/index.ts --output src/db/schema/auth.ts -y",
+    "db:generate": "dotenv -e ../../.env -- drizzle-kit generate",
+    "db:migrate": "dotenv -e ../../.env -- drizzle-kit migrate",
+    "db:studio": "dotenv -e ../../.env -- drizzle-kit studio",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "build:types": "tsc --noEmit false --emitDeclarationOnly --outDir dist"
+  },
+  "dependencies": {
+    "@hono/zod-validator": "^0.9.1",
+    "better-auth": "^1.7.17",
+    "drizzle-orm": "^0.45.4",
+    "hono": "^4.13.16",
+    "ioredis": "^5.4.0",
+    "pg": "^8.13.0",
+    "pino": "^10.4.0",
+    "resend": "^6.37.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@acme/eslint-config": "workspace:*",
+    "@acme/typescript-config": "workspace:*",
+    "@types/node": "^24",
+    "@types/pg": "^8.11.0",
+    "dotenv-cli": "^8.0.0",
+    "drizzle-kit": "^0.31.0",
+    "eslint": "10.14.0",
+    "pino-pretty": "^13.2.0",
+    "typescript": "7.0.2"
+  }
+}

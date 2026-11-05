@@ -1,31 +1,8 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { log } from "./lib/logger.js";
-const app = new Hono();
-
-app.use("*", cors({ origin: "http://localhost:3000" }));
-
-app.use("*", async (c, next) => {
-  const start = performance.now();
-  await next();
-  log.info({
-    method: c.req.method,
-    path: c.req.path,
-    status: c.res.status,
-    ms: Math.round(performance.now() - start),
-  });
-});
-
-app.onError((err, c) => {
-  log.error({ err, path: c.req.path }, "Unhandled Error");
-  return c.json({ error: "Internal server error" }, 500);
-});
-
-app.get("/health", (c) => {
-  return c.json({ message: "Service is running", status: "OK" });
-});
-
-export type AppType = typeof app;
+import { authRoute } from "./routes/auth/index.js";
+import { log } from "@acme/server/log";
+import app from "./app.js";
 
 const serve = Bun.serve({
   port: process.env.PORT || 5030,
@@ -65,6 +42,6 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 
 export default {
-  port: process.env.PORT || 5030,
   fetch: app.fetch,
+  port: process.env.PORT || 5030,
 };

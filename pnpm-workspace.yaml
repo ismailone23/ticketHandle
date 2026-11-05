@@ -1,5 +1,9 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "tooling/*"
 allowBuilds:
   esbuild: true
+ignoredBuiltDependencies:
+  - "@prisma/client"
+  - better-sqlite3
