@@ -9,16 +9,14 @@ const createEvent = z.object({
   seats: z.number().int().positive(),
 });
 
-export const eventRoute = new Hono<AppEnv>();
-
-eventRoute.get("/", (c) => c.json({ events: [] }));
-
-eventRoute.post(
-  "/me",
-  requirePermission({ event: ["create"] }),
-  zValidator("json", createEvent),
-  (c) => {
-    const body = c.req.valid("json");
-    return c.json({ created: body, by: c.get("user")!.id }, 201);
-  },
-);
+export const eventRoute = new Hono<AppEnv>()
+  .get("/", (c) => c.json({ events: [] }))
+  .post(
+    "/",
+    requirePermission({ event: ["create"] }),
+    zValidator("json", createEvent),
+    (c) => {
+      const body = c.req.valid("json");
+      return c.json({ created: body, by: c.get("user")!.id }, 201);
+    },
+  );

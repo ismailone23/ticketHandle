@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { requireAuth } from "../../middleware/guard.js";
-import type { AppEnv } from "../../types.js";
+import { requireAuth } from "../middleware/guard.js";
+import type { AppEnv } from "../types.js";
 
 export const me = new Hono<AppEnv>().get("/", requireAuth, (c) => {
   const user = c.get("user")!;

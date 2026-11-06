@@ -1,6 +1,3 @@
-import { Hono } from "hono";
-import { cors } from "hono/cors";
-import { authRoute } from "./routes/auth/index.js";
 import { log } from "@acme/server/log";
 import app from "./app.js";
 
@@ -40,8 +37,3 @@ function exit(code: number) {
 
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
-
-export default {
-  fetch: app.fetch,
-  port: process.env.PORT || 5030,
-};

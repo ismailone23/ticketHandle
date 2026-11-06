@@ -5,6 +5,7 @@ import { env } from "@acme/server/env";
 import { auth } from "@acme/server/auth";
 import { sessionMiddleware } from "./middleware/session.js";
 import { eventRoute } from "./routes/event/index.js";
+import { me } from "./routes/me.js";
 const app = new Hono();
 
 app.use(
@@ -27,6 +28,7 @@ app.use("*", async (c, next) => {
     ms: Math.round(performance.now() - start),
   });
 });
+
 app.on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw));
 
 app.onError((err, c) => {
@@ -34,13 +36,13 @@ app.onError((err, c) => {
   return c.json({ error: "Internal server error" }, 500);
 });
 
-app.use("/api/*", sessionMiddleware);
-app.route("/event", eventRoute);
-
 app.get("/ping", (c) => {
   return c.json({ message: "Service is running", status: "OK" });
 });
+
+app.use("/api/*", sessionMiddleware);
+const routes = app.route("/event", eventRoute).route("/me", me);
 app.notFound((c) => c.json({ error: "Not Found" }, 404));
 
-export type AppType = typeof app;
+export type AppType = typeof routes;
 export default app;

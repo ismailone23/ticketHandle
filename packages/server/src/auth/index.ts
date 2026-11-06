@@ -58,9 +58,9 @@ export const auth = betterAuth({
     window: 60,
     max: 100,
     customRules: {
-      "/auth/sign-in/email": { window: 60, max: 5 },
-      "/auth/sign-up/email": { window: 60, max: 3 },
-      "/auth/email-otp/send-verification-otp": { window: 60, max: 3 },
+      "/sign-in/email": { window: 60, max: 5 },
+      "/sign-up/email": { window: 60, max: 3 },
+      "/email-otp/send-verification-otp": { window: 60, max: 3 },
     },
   },
 
