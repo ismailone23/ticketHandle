@@ -40,8 +40,9 @@ app.get("/ping", (c) => {
   return c.json({ message: "Service is running", status: "OK" });
 });
 
-app.use("/api/*", sessionMiddleware);
-const routes = app.route("/event", eventRoute).route("/me", me);
+app.use("*", sessionMiddleware);
+app.route("/me", me);
+const routes = app.route("/events", eventRoute);
 app.notFound((c) => c.json({ error: "Not Found" }, 404));
 
 export type AppType = typeof routes;

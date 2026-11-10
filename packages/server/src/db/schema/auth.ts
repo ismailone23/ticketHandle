@@ -1,4 +1,3 @@
-import { relations } from "drizzle-orm";
 import { pgTable, text, timestamp, boolean, index } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
@@ -41,14 +40,3 @@ export const account = pgTable(
   },
   (table) => [index("account_userId_idx").on(table.userId)],
 );
-
-export const userRelations = relations(user, ({ many }) => ({
-  accounts: many(account),
-}));
-
-export const accountRelations = relations(account, ({ one }) => ({
-  user: one(user, {
-    fields: [account.userId],
-    references: [user.id],
-  }),
-}));
