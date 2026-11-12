@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { pgTable, index, uniqueIndex, check } from "drizzle-orm/pg-core";
-import { offDay, seatType } from "./index";
+import { offDay, seatType } from "./enum";
 
 export const train = pgTable(
   "train",

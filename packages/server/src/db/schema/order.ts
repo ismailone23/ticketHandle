@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { pgTable, index, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { user } from "./auth";
-import { orderStatus, paymentStatus, ticketStatus } from "./index";
+import { orderStatus, paymentStatus, ticketStatus } from "./enum";
 import { trip, tripSeat } from "./trips";
 
 // One checkout: "I'm buying KA-12 and KA-13 on the 12 Nov trip"

@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { pgTable, index, uniqueIndex, check } from "drizzle-orm/pg-core";
-import { seatStatus, seatType, tripStatus, train, order } from "./index";
-
+import { train, order } from "./index";
+import { tripStatus, seatStatus, seatType } from "./enum";
 // One run of a train on one date: "Subarna 701 on 12 Nov 2026"
 export const trip = pgTable(
   "trip",
