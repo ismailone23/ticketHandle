@@ -1,4 +1,4 @@
-import type { Session } from "@acme/server/auth";
+import type { Session } from "./index";
 
 export type AppEnv = {
   Variables: {

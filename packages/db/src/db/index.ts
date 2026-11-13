@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { env } from "../env";
+import { env } from "@acme/server/env";
 import { relations } from "./relations";
 
 export const pool = new Pool({

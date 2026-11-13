@@ -1,6 +1,6 @@
-import { pool } from "@acme/server/db";
+import { pool } from "@acme/db/db";
 import { log } from "@acme/server/log";
-import { redis } from "@acme/server/redis";
+import { redis } from "@acme/db/redis";
 
 const pg = await pool.query("select now()");
 

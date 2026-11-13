@@ -2,10 +2,9 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { log } from "@acme/server/log";
 import { env } from "@acme/server/env";
-import { auth } from "@acme/server/auth";
+import { auth } from "@acme/auth";
 import { sessionMiddleware } from "./middleware/session.js";
-import { eventRoute } from "./routes/event/index.js";
-import { me } from "./routes/me.js";
+import { adminRoute } from "./routes/admin/index.js";
 const app = new Hono();
 
 app.use(
@@ -41,8 +40,7 @@ app.get("/ping", (c) => {
 });
 
 app.use("*", sessionMiddleware);
-app.route("/me", me);
-const routes = app.route("/events", eventRoute);
+const routes = app.route("/admin", adminRoute);
 app.notFound((c) => c.json({ error: "Not Found" }, 404));
 
 export type AppType = typeof routes;

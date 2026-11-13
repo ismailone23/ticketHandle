@@ -1,8 +1,9 @@
-import { statement, roles } from "@acme/server/auth/permissions";
+import { statement, roles } from "@acme/auth/permissions";
 import { createMiddleware } from "hono/factory";
-import type { AppEnv } from "../types.js";
+import type { AppEnv } from "@acme/auth/types";
 
 type Statement = typeof statement;
+type Role = typeof roles;
 type Permissions = { [K in keyof Statement]?: Statement[K][number][] };
 
 export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {

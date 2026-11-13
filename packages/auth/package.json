@@ -1,0 +1,31 @@
+{
+  "name": "@acme/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./permissions": "./src/permissions.ts",
+    "./types": "./src/types.ts"
+  },
+  "scripts": {
+    "auth:generate": "dotenv -e ../../.env -- pnpm dlx auth@latest generate --config src/index.ts --output ../db/src/db/schema/auth.ts -y",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "build:types": "tsc --noEmit false --emitDeclarationOnly --outDir dist"
+  },
+  "dependencies": {
+    "@acme/db": "workspace:*",
+    "@acme/server": "workspace:*",
+    "better-auth": "^1.7.17",
+    "drizzle-orm": "^1.0.0-rc.5"
+  },
+  "devDependencies": {
+    "@acme/eslint-config": "workspace:*",
+    "@acme/typescript-config": "workspace:*",
+    "@types/node": "^24",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "10.14.0",
+    "typescript": "7.0.2"
+  }
+}

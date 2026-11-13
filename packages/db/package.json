@@ -1,0 +1,35 @@
+{
+  "name": "@acme/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./db": "./src/db/index.ts",
+    "./db/schema": "./src/db/schema/index.ts",
+    "./redis": "./src/redis/index.ts"
+  },
+  "scripts": {
+    "db:generate": "dotenv -e ../../.env -- drizzle-kit generate",
+    "db:migrate": "dotenv -e ../../.env -- drizzle-kit migrate",
+    "db:studio": "dotenv -e ../../.env -- drizzle-kit studio",
+    "lint": "eslint .",
+    "check-types": "tsc --noEmit",
+    "build:types": "tsc --noEmit false --emitDeclarationOnly --outDir dist"
+  },
+  "dependencies": {
+    "@acme/server": "workspace:*",
+    "drizzle-orm": "^1.0.0-rc.5",
+    "ioredis": "^5.4.0",
+    "pg": "^8.13.0"
+  },
+  "devDependencies": {
+    "@acme/eslint-config": "workspace:*",
+    "@acme/typescript-config": "workspace:*",
+    "@types/node": "^24",
+    "@types/pg": "^8.11.0",
+    "dotenv-cli": "^8.0.0",
+    "drizzle-kit": "^1.0.0-rc.5",
+    "eslint": "10.14.0",
+    "typescript": "7.0.2"
+  }
+}

@@ -1,12 +1,12 @@
 import { betterAuth } from "better-auth";
-import { env } from "../env";
+import { env } from "@acme/server/env";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { db } from "../db";
-import * as schema from "../db/schema";
-import { redis } from "../redis";
+import { db } from "@acme/db/db";
+import * as schema from "@acme/db/db/schema";
+import { redis } from "@acme/db/redis";
 import { admin as adminPlugin, emailOTP } from "better-auth/plugins";
-import { otpEmail, sendEmail } from "../email";
-import { log } from "../lib/logger";
+import { otpEmail, sendEmail } from "@acme/server/email";
+import { log } from "@acme/server/log";
 import { ac, roles } from "./permissions";
 
 export const auth = betterAuth({

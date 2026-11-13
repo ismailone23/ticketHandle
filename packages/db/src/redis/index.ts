@@ -1,6 +1,6 @@
 import Redis from "ioredis";
-import { env } from "../env";
-import { log } from "../lib/logger";
+import { env } from "@acme/server/env";
+import { log } from "@acme/server/log";
 
 export const redis = new Redis(env.REDIS_URL, {
   maxRetriesPerRequest: 3,

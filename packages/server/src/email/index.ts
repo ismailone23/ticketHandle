@@ -13,7 +13,7 @@ type SendEmailInput = {
 export async function sendEmail({ to, subject, html, text }: SendEmailInput) {
   // No key in dev: print to the console instead of failing
   if (!resend) {
-    console.log(
+    log.info(
       `\n📧 [dev email] to=${to}\nsubject: ${subject}\n${text ?? html}\n`,
     );
     return;
