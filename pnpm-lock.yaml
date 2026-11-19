@@ -32,6 +32,9 @@ importers:
       '@hono/zod-validator':
         specifier: ^0.9.1
         version: 0.9.1(hono@4.13.16)(zod@4.6.7)
+      drizzle-orm:
+        specifier: 1.0.0-rc.5
+        version: 1.0.0-rc.5(@types/pg@8.23.1)(bun-types@1.4.4)(pg@8.23.1)(zod@4.6.7)
       hono:
         specifier: ^4.13.16
         version: 4.13.16
@@ -199,6 +202,15 @@ importers:
 
   packages/server:
     dependencies:
+      '@acme/db':
+        specifier: workspace:*
+        version: link:../db
+      '@acme/server':
+        specifier: workspace:*
+        version: 'link:'
+      drizzle-orm:
+        specifier: 1.0.0-rc.5
+        version: 1.0.0-rc.5(@types/pg@8.23.1)(bun-types@1.4.4)(pg@8.23.1)(zod@4.6.7)
       pino:
         specifier: ^10.4.0
         version: 10.4.0

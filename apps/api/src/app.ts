@@ -5,6 +5,7 @@ import { env } from "@acme/server/env";
 import { auth } from "@acme/auth";
 import { sessionMiddleware } from "./middleware/session.js";
 import { adminRoute } from "./routes/admin/index.js";
+import { journeyRoute } from "./routes/journey";
 const app = new Hono();
 
 app.use(
@@ -35,12 +36,15 @@ app.onError((err, c) => {
   return c.json({ error: "Internal server error" }, 500);
 });
 
-app.get("/ping", (c) => {
+app.get("/api/ping", (c) => {
   return c.json({ message: "Service is running", status: "OK" });
 });
 
 app.use("*", sessionMiddleware);
-const routes = app.route("/admin", adminRoute);
+
+app.route("/api/journey", journeyRoute);
+const routes = app.route("/api/admin", adminRoute);
+
 app.notFound((c) => c.json({ error: "Not Found" }, 404));
 
 export type AppType = typeof routes;

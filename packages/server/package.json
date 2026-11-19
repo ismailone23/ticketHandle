@@ -6,7 +6,9 @@
   "exports": {
     "./env": "./src/env/index.ts",
     "./log": "./src/lib/logger.ts",
-    "./email": "./src/email/index.ts"
+    "./email": "./src/email/index.ts",
+    "./services": "./src/services/index.ts",
+    "./lib": "./src/lib/helper.ts"
   },
   "scripts": {
     "lint": "eslint .",
@@ -14,6 +16,9 @@
     "build:types": "tsc --noEmit false --emitDeclarationOnly --outDir dist"
   },
   "dependencies": {
+    "@acme/db": "workspace:*",
+    "@acme/server": "workspace:*",
+    "drizzle-orm": "1.0.0-rc.5",
     "pino": "^10.4.0",
     "resend": "^6.37.0",
     "zod": "^4.6.7"
