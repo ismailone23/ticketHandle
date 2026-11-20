@@ -10,9 +10,6 @@ export const train = pgTable(
     name: t.text("name").notNull(),
     fromStation: t.text("from_station").notNull(),
     toStation: t.text("to_station").notNull(),
-    departureTime: t.time("departure_time").notNull(),
-    arrivalTime: t.time("arrival_time").notNull(),
-    arrivalDayOffset: t.integer("arrival_day_offset").notNull().default(0), // 1 = arrives next day (night trains)
     offDay: offDay("off_day"), // null = runs every day
     createdAt: t
       .timestamp("created_at", { withTimezone: true })
@@ -27,7 +24,6 @@ export const train = pgTable(
   (t) => [
     uniqueIndex("train_number_uq").on(t.number),
     index("train_route_idx").on(t.fromStation, t.toStation),
-    check("train_arrival_offset_valid", sql`${t.arrivalDayOffset} >= 0`),
     check("train_route_valid", sql`${t.fromStation} <> ${t.toStation}`),
   ],
 );
@@ -42,12 +38,15 @@ export const coach = pgTable(
       .notNull()
       .references(() => train.id, { onDelete: "cascade" }),
     code: t.text("code").notNull(), // "KA", "KHA", "GA" ...
+    position: t.integer("position").notNull(), // 1 = first coach behind the engine
     seatType: seatType("seat_type").notNull(),
     seatCount: t.integer("seat_count").notNull(),
     price: t.integer("price").notNull(), // poisha: ৳1,200 = 120000
   }),
   (t) => [
     uniqueIndex("coach_train_code_uq").on(t.trainId, t.code),
+    uniqueIndex("coach_train_position_uq").on(t.trainId, t.position),
+    check("coach_position_positive", sql`${t.position} > 0`),
     check("coach_seat_count_positive", sql`${t.seatCount} > 0`),
     check("coach_price_positive", sql`${t.price} >= 0`),
   ],

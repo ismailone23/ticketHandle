@@ -2,7 +2,7 @@
   "type": "base",
   "version": "9",
   "dialect": "postgres",
-  "id": "40f63442-70b8-47bf-b98e-a8c3bc209c92",
+  "id": "b22dfbf9-2606-4575-b4a8-a5410ef67899",
   "prevIds": [
     "00000000-0000-0000-0000-000000000000"
   ],
@@ -332,13 +332,13 @@
         "index",
         "public",
         "trip",
-        "trip_train_date_uq"
+        "trip_train_date_idx"
       ],
       "writes": [
-        "s|idx|public.trip_train_date_uq",
-        "n|idx|public.trip_train_date_uq",
-        "e|idx|public.trip_train_date_uq",
-        "n|rel|public.trip_train_date_uq"
+        "s|idx|public.trip_train_date_idx",
+        "n|idx|public.trip_train_date_idx",
+        "e|idx|public.trip_train_date_idx",
+        "n|rel|public.trip_train_date_idx"
       ],
       "reads": [
         "n|tbl|public.trip",
@@ -472,6 +472,27 @@
         "n|sch|public",
         "n|col|public.coach.train_id",
         "n|col|public.coach.code"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "coach",
+        "coach_train_position_uq"
+      ],
+      "writes": [
+        "s|idx|public.coach_train_position_uq",
+        "n|idx|public.coach_train_position_uq",
+        "e|idx|public.coach_train_position_uq",
+        "n|rel|public.coach_train_position_uq"
+      ],
+      "reads": [
+        "n|tbl|public.coach",
+        "n|sch|public",
+        "n|col|public.coach.train_id",
+        "n|col|public.coach.position"
       ]
     },
     {
@@ -1504,19 +1525,6 @@
     {
       "schema": "public",
       "table": "trip",
-      "name": "departs_at",
-      "type": "timestamp with time zone",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
-      "table": "trip",
       "name": "sales_open_at",
       "type": "timestamp with time zone",
       "typeSchema": null,
@@ -1536,6 +1544,45 @@
       "notNull": true,
       "dimensions": 0,
       "default": "'scheduled'",
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "trip",
+      "name": "departure_time",
+      "type": "time",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "trip",
+      "name": "arrival_time",
+      "type": "time",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "trip",
+      "name": "arrival_day_offset",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": "0",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -1608,6 +1655,19 @@
     {
       "schema": "public",
       "table": "trip_seat",
+      "name": "coach_position",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "trip_seat",
       "name": "seat_number",
       "type": "integer",
       "typeSchema": null,
@@ -1626,7 +1686,7 @@
       "typeSchema": "public",
       "notNull": true,
       "dimensions": 0,
-      "default": null,
+      "default": "'s_chair'",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -1738,6 +1798,19 @@
     {
       "schema": "public",
       "table": "coach",
+      "name": "position",
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "entityType": "columns"
+    },
+    {
+      "schema": "public",
+      "table": "coach",
       "name": "seat_type",
       "type": "seat_type",
       "typeSchema": "public",
@@ -1835,45 +1908,6 @@
       "notNull": true,
       "dimensions": 0,
       "default": null,
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
-      "table": "train",
-      "name": "departure_time",
-      "type": "time",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
-      "table": "train",
-      "name": "arrival_time",
-      "type": "time",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": null,
-      "generated": null,
-      "identity": null,
-      "entityType": "columns"
-    },
-    {
-      "schema": "public",
-      "table": "train",
-      "name": "arrival_day_offset",
-      "type": "integer",
-      "typeSchema": null,
-      "notNull": true,
-      "dimensions": 0,
-      "default": "0",
       "generated": null,
       "identity": null,
       "entityType": "columns"
@@ -2331,7 +2365,7 @@
     {
       "schema": "public",
       "table": "trip",
-      "name": "trip_train_date_uq",
+      "name": "trip_train_date_idx",
       "nameExplicit": true,
       "columns": [
         {
@@ -2349,7 +2383,7 @@
           "opclass": null
         }
       ],
-      "isUnique": true,
+      "isUnique": false,
       "where": null,
       "with": "",
       "method": "btree",
@@ -2518,6 +2552,34 @@
         },
         {
           "value": "code",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        }
+      ],
+      "isUnique": true,
+      "where": null,
+      "with": "",
+      "method": "btree",
+      "concurrently": false,
+      "entityType": "indexes"
+    },
+    {
+      "schema": "public",
+      "table": "coach",
+      "name": "coach_train_position_uq",
+      "nameExplicit": true,
+      "columns": [
+        {
+          "value": "train_id",
+          "isExpression": false,
+          "asc": true,
+          "nullsFirst": false,
+          "opclass": null
+        },
+        {
+          "value": "position",
           "isExpression": false,
           "asc": true,
           "nullsFirst": false,
@@ -3146,6 +3208,20 @@
     },
     {
       "schema": "public",
+      "table": "trip",
+      "name": "train_arrival_offset_valid",
+      "value": "\"arrival_day_offset\" >= 0",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "trip",
+      "name": "trip_arrival_after_departure",
+      "value": "(\"journey_date\" + \"arrival_day_offset\") + \"arrival_time\" > \"journey_date\" + \"departure_time\"",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
       "table": "trip_seat",
       "name": "trip_seat_price_positive",
       "value": "\"price\" >= 0",
@@ -3168,6 +3244,13 @@
     {
       "schema": "public",
       "table": "coach",
+      "name": "coach_position_positive",
+      "value": "\"position\" > 0",
+      "entityType": "checks"
+    },
+    {
+      "schema": "public",
+      "table": "coach",
       "name": "coach_seat_count_positive",
       "value": "\"seat_count\" > 0",
       "entityType": "checks"
@@ -3177,13 +3260,6 @@
       "table": "coach",
       "name": "coach_price_positive",
       "value": "\"price\" >= 0",
-      "entityType": "checks"
-    },
-    {
-      "schema": "public",
-      "table": "train",
-      "name": "train_arrival_offset_valid",
-      "value": "\"arrival_day_offset\" >= 0",
       "entityType": "checks"
     },
     {

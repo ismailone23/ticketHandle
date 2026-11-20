@@ -39,19 +39,24 @@ CREATE TABLE "trip" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"train_id" uuid NOT NULL,
 	"journey_date" date NOT NULL,
-	"departs_at" timestamp with time zone NOT NULL,
 	"sales_open_at" timestamp with time zone NOT NULL,
 	"status" "trip_status" DEFAULT 'scheduled'::"trip_status" NOT NULL,
+	"departure_time" time NOT NULL,
+	"arrival_time" time NOT NULL,
+	"arrival_day_offset" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "train_arrival_offset_valid" CHECK ("arrival_day_offset" >= 0),
+	CONSTRAINT "trip_arrival_after_departure" CHECK (("journey_date" + "arrival_day_offset") + "arrival_time" > "journey_date" + "departure_time")
 );
 --> statement-breakpoint
 CREATE TABLE "trip_seat" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"trip_id" uuid NOT NULL,
 	"coach_code" text NOT NULL,
+	"coach_position" integer NOT NULL,
 	"seat_number" integer NOT NULL,
-	"seat_type" "seat_type" NOT NULL,
+	"seat_type" "seat_type" DEFAULT 's_chair'::"seat_type" NOT NULL,
 	"price" integer NOT NULL,
 	"status" "seat_status" DEFAULT 'available'::"seat_status" NOT NULL,
 	"order_id" uuid,
@@ -66,9 +71,11 @@ CREATE TABLE "coach" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
 	"train_id" uuid NOT NULL,
 	"code" text NOT NULL,
+	"position" integer NOT NULL,
 	"seat_type" "seat_type" NOT NULL,
 	"seat_count" integer NOT NULL,
 	"price" integer NOT NULL,
+	CONSTRAINT "coach_position_positive" CHECK ("position" > 0),
 	CONSTRAINT "coach_seat_count_positive" CHECK ("seat_count" > 0),
 	CONSTRAINT "coach_price_positive" CHECK ("price" >= 0)
 );
@@ -79,13 +86,9 @@ CREATE TABLE "train" (
 	"name" text NOT NULL,
 	"from_station" text NOT NULL,
 	"to_station" text NOT NULL,
-	"departure_time" time NOT NULL,
-	"arrival_time" time NOT NULL,
-	"arrival_day_offset" integer DEFAULT 0 NOT NULL,
 	"off_day" "off_day",
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "train_arrival_offset_valid" CHECK ("arrival_day_offset" >= 0),
 	CONSTRAINT "train_route_valid" CHECK ("from_station" <> "to_station")
 );
 --> statement-breakpoint
@@ -132,13 +135,14 @@ CREATE TABLE "ticket" (
 );
 --> statement-breakpoint
 CREATE INDEX "account_userId_idx" ON "account" ("user_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "trip_train_date_uq" ON "trip" ("train_id","journey_date");--> statement-breakpoint
+CREATE INDEX "trip_train_date_idx" ON "trip" ("train_id","journey_date");--> statement-breakpoint
 CREATE INDEX "trip_date_status_idx" ON "trip" ("journey_date","status");--> statement-breakpoint
 CREATE UNIQUE INDEX "trip_seat_position_uq" ON "trip_seat" ("trip_id","coach_code","seat_number");--> statement-breakpoint
 CREATE INDEX "trip_seat_availability_idx" ON "trip_seat" ("trip_id","seat_type","status");--> statement-breakpoint
 CREATE INDEX "trip_seat_expiry_idx" ON "trip_seat" ("status","reserved_until");--> statement-breakpoint
 CREATE INDEX "trip_seat_order_idx" ON "trip_seat" ("order_id");--> statement-breakpoint
 CREATE UNIQUE INDEX "coach_train_code_uq" ON "coach" ("train_id","code");--> statement-breakpoint
+CREATE UNIQUE INDEX "coach_train_position_uq" ON "coach" ("train_id","position");--> statement-breakpoint
 CREATE UNIQUE INDEX "train_number_uq" ON "train" ("number");--> statement-breakpoint
 CREATE INDEX "train_route_idx" ON "train" ("from_station","to_station");--> statement-breakpoint
 CREATE UNIQUE INDEX "order_user_idempotency_uq" ON "order" ("user_id","idempotency_key");--> statement-breakpoint

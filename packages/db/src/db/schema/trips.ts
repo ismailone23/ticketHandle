@@ -11,10 +11,12 @@ export const trip = pgTable(
       .uuid("train_id")
       .notNull()
       .references(() => train.id, { onDelete: "restrict" }),
-    journeyDate: t.date("journey_date", { mode: "string" }).notNull(), // "2026-11-12"
-    departsAt: t.timestamp("departs_at", { withTimezone: true }).notNull(),
+    journeyDate: t.date("journey_date", { mode: "string" }).notNull(),
     salesOpenAt: t.timestamp("sales_open_at", { withTimezone: true }).notNull(),
     status: tripStatus("status").notNull().default("scheduled"),
+    departureTime: t.time("departure_time").notNull(),
+    arrivalTime: t.time("arrival_time").notNull(),
+    arrivalDayOffset: t.integer("arrival_day_offset").notNull().default(0),
     createdAt: t
       .timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -26,8 +28,17 @@ export const trip = pgTable(
       .$onUpdate(() => new Date()),
   }),
   (t) => [
-    uniqueIndex("trip_train_date_uq").on(t.trainId, t.journeyDate),
+    // A train can run several times a day, but its runs must not overlap.
+    // Enforced by the "trip_no_overlap" EXCLUDE constraint in a custom migration
+    // (drizzle can't express EXCLUDE); it ignores cancelled trips.
+    index("trip_train_date_idx").on(t.trainId, t.journeyDate),
     index("trip_date_status_idx").on(t.journeyDate, t.status),
+    check("train_arrival_offset_valid", sql`${t.arrivalDayOffset} >= 0`),
+    // arrival strictly after departure, or the run's time range is invalid
+    check(
+      "trip_arrival_after_departure",
+      sql`(${t.journeyDate} + ${t.arrivalDayOffset}) + ${t.arrivalTime} > ${t.journeyDate} + ${t.departureTime}`,
+    ),
   ],
 );
 
@@ -41,8 +52,9 @@ export const tripSeat = pgTable(
       .notNull()
       .references(() => trip.id, { onDelete: "restrict" }),
     coachCode: t.text("coach_code").notNull(),
+    coachPosition: t.integer("coach_position").notNull(), // copied from coach; per-trip so rush-time coaches can slot in
     seatNumber: t.integer("seat_number").notNull(),
-    seatType: seatType("seat_type").notNull(),
+    seatType: seatType("seat_type").default("s_chair").notNull(),
     price: t.integer("price").notNull(), // copied from coach when the trip is created
     status: seatStatus("status").notNull().default("available"),
     orderId: t

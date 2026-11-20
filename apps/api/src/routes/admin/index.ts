@@ -3,6 +3,8 @@ import type { AppEnv } from "@acme/auth/types";
 import { requireAuth, requirePermission } from "../../middleware/guard";
 import { db } from "@acme/db/db";
 import { user } from "@acme/db/db/schema";
+import { trainRoute } from "./train";
+import { tripRoute } from "./trip";
 
 export const adminRoute = new Hono<AppEnv>();
 
@@ -11,3 +13,5 @@ adminRoute.get("/users", async (c) => {
   const allusers = await db.select().from(user);
   return c.json({ users: allusers });
 });
+adminRoute.route("/", trainRoute);
+adminRoute.route("/", tripRoute);

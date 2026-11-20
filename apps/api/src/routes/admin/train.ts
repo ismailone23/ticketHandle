@@ -1,13 +1,16 @@
 import type { AppEnv } from "@acme/auth/types";
 import { Hono } from "hono";
-import { requireAuth, requirePermission } from "../../middleware/guard";
 import {
   cached,
   getTrainsVersion,
   invalidateTrains,
   redis,
 } from "@acme/db/redis";
-import { getAllTrains, getTrainByNumber } from "@acme/server/services";
+import {
+  getAllTrains,
+  getTrainByNumber,
+  InvalidCursorError,
+} from "@acme/server/services";
 import * as z from "zod";
 import { zValidator } from "@hono/zod-validator";
 import { insertTrainSchema, querySchema, updateTrainSchema } from "../../types";
@@ -18,12 +21,14 @@ import { isUniqueViolation, pgError } from "@acme/server/lib";
 import { log } from "@acme/server/log";
 export const trainRoute = new Hono<AppEnv>();
 
-trainRoute.use(requireAuth, requirePermission({ user: ["list"] }));
-
 trainRoute.get("/all-trains", zValidator("query", querySchema), async (c) => {
   const q = c.req.valid("query");
   const key = `trains:list:v${await getTrainsVersion()}:${JSON.stringify(q)}`;
-  const result = await cached(key, 300, () => getAllTrains(q));
+  const result = await cached(key, 300, () => getAllTrains(q)).catch((e) => {
+    if (e instanceof InvalidCursorError) return null;
+    throw e;
+  });
+  if (!result) return c.json({ error: "Invalid cursor" }, 400);
   return c.json({ data: result.items, nextCursor: result.nextCursor });
 });
 
