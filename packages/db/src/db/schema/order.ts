@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 import { pgTable, index, uniqueIndex, check } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { orderStatus, paymentStatus, ticketStatus } from "./enum";
-import { trip, tripSeat } from "./trips";
+import { trip } from "./trips";
 
 // One checkout: "I'm buying KA-12 and KA-13 on the 12 Nov trip"
 export const order = pgTable(
@@ -21,6 +21,11 @@ export const order = pgTable(
     totalAmount: t.integer("total_amount").notNull(), // poisha
     currency: t.text("currency").notNull().default("BDT"),
     idempotencyKey: t.text("idempotency_key").notNull(),
+    // the travellers on this order's ticket; seatNumber matches tripSeat.seatNumber
+    passengers: t
+      .jsonb("passengers")
+      .$type<{ seatNumber: number; name: string; email?: string }[]>()
+      .notNull(),
     expiresAt: t.timestamp("expires_at", { withTimezone: true }).notNull(),
     paidAt: t.timestamp("paid_at", { withTimezone: true }),
     createdAt: t
@@ -74,7 +79,8 @@ export const payment = pgTable(
   ],
 );
 
-// Issued after payment, one per passenger. This is what gets checked on the train.
+// Issued after payment, one per order: one QR covers all its seats (up to 4).
+// Seats come from tripSeat.orderId, names from order.passengers.
 export const ticket = pgTable(
   "ticket",
   (t) => ({
@@ -87,16 +93,10 @@ export const ticket = pgTable(
       .uuid("trip_id")
       .notNull()
       .references(() => trip.id, { onDelete: "restrict" }),
-    tripSeatId: t
-      .uuid("trip_seat_id")
-      .notNull()
-      .references(() => tripSeat.id, { onDelete: "restrict" }),
     userId: t
       .text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "restrict" }),
-    passengerName: t.text("passenger_name").notNull(),
-    unitPrice: t.integer("unit_price").notNull(), // snapshot at purchase
     code: t.text("code").notNull(), // random, for the QR. Never the id.
     status: ticketStatus("status").notNull().default("valid"),
     checkedAt: t.timestamp("checked_at", { withTimezone: true }),
@@ -107,13 +107,9 @@ export const ticket = pgTable(
   }),
   (t) => [
     uniqueIndex("ticket_code_uq").on(t.code),
-    // safety net: one active ticket per seat, even if app code has a bug
-    uniqueIndex("ticket_seat_active_uq")
-      .on(t.tripSeatId)
-      .where(sql`${t.status} in ('valid', 'used')`),
-    index("ticket_order_idx").on(t.orderId),
+    // safety net: a paid order never gets two tickets, even if the gateway calls back twice
+    uniqueIndex("ticket_order_uq").on(t.orderId),
     index("ticket_user_idx").on(t.userId),
     index("ticket_trip_idx").on(t.tripId),
-    check("ticket_price_positive", sql`${t.unitPrice} >= 0`),
   ],
 );

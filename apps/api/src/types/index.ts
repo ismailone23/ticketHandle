@@ -131,3 +131,25 @@ export const updateTripSchema = z
     path: ["detach"],
     message: "Duplicate coach code",
   });
+
+export const purchaseTicketSchema = z.object({
+  tripId: z.uuid(),
+  seatType: z.enum(seatType.enumValues).default("s_chair"),
+  coachCode,
+  // one entry per seat, so seat count and name count can't disagree
+  passengers: z
+    .array(
+      z.object({
+        seatNumber: z.number().int().min(1),
+        name: z.string().trim().min(1).max(100),
+        email: z.email().optional(),
+      }),
+    )
+    .min(1)
+    .max(4)
+    .refine(
+      (p) => new Set(p.map((x) => x.seatNumber)).size === p.length,
+      "Duplicate seat number",
+    ),
+  provider: z.enum(["bkash", "nagad", "sslcommerz"]),
+});

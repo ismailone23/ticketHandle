@@ -4,14 +4,16 @@ import type { AppEnv } from "@acme/auth/types";
 import { zValidator } from "@hono/zod-validator";
 import { insertTripSchema, updateTripSchema } from "../../types";
 import { db } from "@acme/db/db";
+import { invalidateTrains } from "@acme/db/redis";
 import { order, ticket, trip, tripSeat } from "@acme/db/db/schema";
 import { tripDbError } from "@acme/server/lib";
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { z } from "zod";
 export const tripRoute = new Hono<AppEnv>();
 
+// Todo: add a corn job or background function to auto update the trip status for departed
 tripRoute.post("/add-trip", zValidator("json", insertTripSchema), async (c) => {
-  const { seats, ...tripD } = await c.req.valid("json");
+  const { seats, ...tripD } = c.req.valid("json");
   try {
     const created = await db.transaction(async (tx) => {
       const [newTrip] = await tx.insert(trip).values(tripD).returning();
@@ -24,7 +26,7 @@ tripRoute.post("/add-trip", zValidator("json", insertTripSchema), async (c) => {
 
       return { ...newTrip, seats: insertedSeates };
     });
-    // await invalidateTrip()
+    await invalidateTrains();
     return c.json({ data: created }, 201);
   } catch (err) {
     const e = tripDbError(err);
@@ -136,6 +138,7 @@ tripRoute.put(
           .orderBy(asc(tripSeat.coachPosition), asc(tripSeat.seatNumber));
         return { ...row!, seats };
       });
+      await invalidateTrains();
       return c.json({ data: updated });
     } catch (err) {
       if (err instanceof HTTPException)
@@ -200,6 +203,7 @@ tripRoute.post(
 
     if ("error" in result)
       return c.json({ error: result.error }, result.status);
+    await invalidateTrains();
     return c.json({ data: result.data });
   },
 );

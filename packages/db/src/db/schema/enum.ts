@@ -8,13 +8,13 @@ export const seatType = pgEnum("seat_type", [
 ]);
 
 export const offDay = pgEnum("off_day", [
-  "SAT",
   "SUN",
   "MON",
   "TUE",
   "WED",
   "THU",
   "FRI",
+  "SAT",
 ]);
 
 export const tripStatus = pgEnum("trip_status", [

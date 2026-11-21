@@ -39,7 +39,6 @@ export const relations = defineRelations(schema, (r) => ({
   ticket: {
     order: r.one.order({ from: r.ticket.orderId, to: r.order.id }),
     trip: r.one.trip({ from: r.ticket.tripId, to: r.trip.id }),
-    seat: r.one.tripSeat({ from: r.ticket.tripSeatId, to: r.tripSeat.id }),
     user: r.one.user({ from: r.ticket.userId, to: r.user.id }),
   },
 }));
