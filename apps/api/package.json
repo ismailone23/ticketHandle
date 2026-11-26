@@ -8,7 +8,8 @@
     "dev": "bun --env-file=../../.env --hot src/index.ts",
     "check:infra": "bun --env-file=../../.env src/scripts/check.ts",
     "test": "bun --env-file=../../.env test",
-    "test:hold-race": "bun --env-file=../../.env src/scripts/hold-race.ts"
+    "test:hold-race": "bun --env-file=../../.env src/scripts/hold-race.ts",
+    "test:book-load": "taskset -c 0-1 nice -n 10 bun --env-file=../../.env test ./src/scripts/book-load.ts"
   },
   "dependencies": {
     "@acme/auth": "workspace:*",
