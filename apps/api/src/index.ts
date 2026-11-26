@@ -2,14 +2,18 @@ import cluster from "node:cluster";
 import os from "node:os";
 import { log } from "@acme/server/log";
 
-// One process per core in production; dev stays single-process so `bun --hot` works.
+// Half the threads in production (the rest go to Postgres/Redis on the same box); dev stays
+// single-process so `bun --hot` works. WORKERS overrides it, e.g. WORKERS=1 for a single-core test.
 const workers =
-  process.env.NODE_ENV === "production" ? os.availableParallelism() : 1;
+  Number(process.env.WORKERS) ||
+  (process.env.NODE_ENV === "production"
+    ? Math.max(1, Math.floor(os.availableParallelism() / 2))
+    : 1);
 
 if (cluster.isPrimary && workers > 1) {
   let shuttingDown = false;
 
-  for (let i = 0; i < workers / 2; i++) cluster.fork();
+  for (let i = 0; i < workers; i++) cluster.fork();
 
   cluster.on("exit", (worker, code) => {
     if (shuttingDown) {
