@@ -1,0 +1,359 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "80ff2771-fb56-46db-b905-b98ec4a5338c",
+  "prevIds": [
+    "5b7d5c63-81ea-4d58-a2d3-ea85a4a18f2d"
+  ],
+  "footprints": [
+    {
+      "statementType": "drop_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "ticket"
+      ],
+      "writes": [
+        "s|fk|public.ticket.ticket_trip_seat_id_trip_seat_id_fkey",
+        "n|fk|public.ticket.ticket_trip_seat_id_trip_seat_id_fkey",
+        "e|fk|public.ticket.ticket_trip_seat_id_trip_seat_id_fkey",
+        "n|con|public.ticket.ticket_trip_seat_id_trip_seat_id_fkey"
+      ],
+      "reads": [
+        "n|tbl|public.ticket",
+        "n|sch|public",
+        "e|col|public.ticket.trip_seat_id"
+      ]
+    },
+    {
+      "statementType": "drop_check",
+      "statementTarget": [
+        "table",
+        "public",
+        "ticket"
+      ],
+      "writes": [
+        "s|ck|public.ticket.ticket_price_positive",
+        "n|ck|public.ticket.ticket_price_positive",
+        "e|ck|public.ticket.ticket_price_positive",
+        "n|con|public.ticket.ticket_price_positive"
+      ],
+      "reads": [
+        "n|tbl|public.ticket",
+        "n|sch|public",
+        "e|col|public.ticket.unit_price"
+      ]
+    },
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "ticket",
+        "ticket_seat_active_uq"
+      ],
+      "writes": [
+        "s|idx|public.ticket_seat_active_uq",
+        "n|idx|public.ticket_seat_active_uq",
+        "e|idx|public.ticket_seat_active_uq",
+        "n|rel|public.ticket_seat_active_uq"
+      ],
+      "reads": [
+        "e|tbl|public.ticket",
+        "n|sch|public",
+        "e|col|public.ticket.trip_seat_id"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "ticket",
+        "ticket_order_idx"
+      ],
+      "writes": [
+        "s|idx|public.ticket_order_idx",
+        "n|idx|public.ticket_order_idx",
+        "e|idx|public.ticket_order_idx",
+        "n|rel|public.ticket_order_idx"
+      ],
+      "reads": [
+        "e|tbl|public.ticket",
+        "n|sch|public",
+        "e|col|public.ticket.order_id"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "order",
+        "passengers"
+      ],
+      "writes": [
+        "s|col|public.order.passengers",
+        "n|col|public.order.passengers",
+        "e|col|public.order.passengers"
+      ],
+      "reads": [
+        "n|tbl|public.order",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "order",
+        "cancelled_at"
+      ],
+      "writes": [
+        "s|col|public.order.cancelled_at",
+        "n|col|public.order.cancelled_at",
+        "e|col|public.order.cancelled_at"
+      ],
+      "reads": [
+        "n|tbl|public.order",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "order",
+        "refund_amount"
+      ],
+      "writes": [
+        "s|col|public.order.refund_amount",
+        "n|col|public.order.refund_amount",
+        "e|col|public.order.refund_amount"
+      ],
+      "reads": [
+        "n|tbl|public.order",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "recreate_enum",
+      "statementTarget": [
+        "enum",
+        "public",
+        "off_day"
+      ],
+      "writes": [
+        "s|enum|public.off_day",
+        "n|enum|public.off_day",
+        "e|enum|public.off_day",
+        "n|type|public.off_day",
+        "s|colprop|public.train.off_day.type",
+        "s|colprop|public.train.off_day.default"
+      ],
+      "reads": [
+        "n|sch|public",
+        "n|tbl|public.train",
+        "n|sch|public",
+        "n|col|public.train.off_day"
+      ],
+      "sqlHash": "5c5ee7b1036c4a1f"
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "ticket",
+        "trip_seat_id"
+      ],
+      "writes": [
+        "s|col|public.ticket.trip_seat_id",
+        "n|col|public.ticket.trip_seat_id",
+        "e|col|public.ticket.trip_seat_id"
+      ],
+      "reads": [
+        "n|tbl|public.ticket",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "ticket",
+        "passenger_name"
+      ],
+      "writes": [
+        "s|col|public.ticket.passenger_name",
+        "n|col|public.ticket.passenger_name",
+        "e|col|public.ticket.passenger_name"
+      ],
+      "reads": [
+        "n|tbl|public.ticket",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "ticket",
+        "unit_price"
+      ],
+      "writes": [
+        "s|col|public.ticket.unit_price",
+        "n|col|public.ticket.unit_price",
+        "e|col|public.ticket.unit_price"
+      ],
+      "reads": [
+        "n|tbl|public.ticket",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "ticket",
+        "ticket_order_uq"
+      ],
+      "writes": [
+        "s|idx|public.ticket_order_uq",
+        "n|idx|public.ticket_order_uq",
+        "e|idx|public.ticket_order_uq",
+        "n|rel|public.ticket_order_uq"
+      ],
+      "reads": [
+        "n|tbl|public.ticket",
+        "n|sch|public",
+        "n|col|public.ticket.order_id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "order",
+        "name": "passengers",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "order",
+        "name": "cancelled_at",
+        "type": "timestamp with time zone",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "order",
+        "name": "refund_amount",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ticket",
+        "name": "ticket_order_uq",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "order_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"ticket\",\"trip_seat_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"ticket\",\"passenger_name\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"ticket\",\"unit_price\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"ticket_seat_active_uq\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"ticket_order_idx\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"ticket\",\"ticket_trip_seat_id_trip_seat_id_fkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "checks\u0000[\"public\",\"ticket\",\"ticket_price_positive\"]"
+    },
+    {
+      "op": "alter",
+      "key": "enums\u0000[\"public\",\"off_day\"]",
+      "set": {
+        "values": [
+          "SUN",
+          "MON",
+          "TUE",
+          "WED",
+          "THU",
+          "FRI",
+          "SAT"
+        ]
+      }
+    }
+  ]
+}

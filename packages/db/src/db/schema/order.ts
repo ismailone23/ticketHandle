@@ -21,13 +21,18 @@ export const order = pgTable(
     totalAmount: t.integer("total_amount").notNull(), // poisha
     currency: t.text("currency").notNull().default("BDT"),
     idempotencyKey: t.text("idempotency_key").notNull(),
-    // the travellers on this order's ticket; seatNumber matches tripSeat.seatNumber
+    // one per seat; coachCode + seatNumber match a tripSeat
     passengers: t
       .jsonb("passengers")
-      .$type<{ seatNumber: number; name: string; email?: string }[]>()
+      .$type<
+        { coachCode: string; seatNumber: number; name: string; email?: string }[]
+      >()
       .notNull(),
     expiresAt: t.timestamp("expires_at", { withTimezone: true }).notNull(),
     paidAt: t.timestamp("paid_at", { withTimezone: true }),
+    // cancelled + refundAmount > 0 = refund pending; admin sets "refunded" when paid
+    cancelledAt: t.timestamp("cancelled_at", { withTimezone: true }),
+    refundAmount: t.integer("refund_amount"), // poisha
     createdAt: t
       .timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -39,7 +44,7 @@ export const order = pgTable(
       .$onUpdate(() => new Date()),
   }),
   (t) => [
-    // double-clicked "Buy" → second insert fails → return the first order
+    // idempotent hold: same key returns the first order
     uniqueIndex("order_user_idempotency_uq").on(t.userId, t.idempotencyKey),
     index("order_user_created_idx").on(t.userId, t.createdAt), // "my orders", newest first
     index("order_status_expires_idx").on(t.status, t.expiresAt), // cleanup job
@@ -79,8 +84,7 @@ export const payment = pgTable(
   ],
 );
 
-// Issued after payment, one per order: one QR covers all its seats (up to 4).
-// Seats come from tripSeat.orderId, names from order.passengers.
+// one per paid order; one QR covers all its seats
 export const ticket = pgTable(
   "ticket",
   (t) => ({
@@ -107,7 +111,7 @@ export const ticket = pgTable(
   }),
   (t) => [
     uniqueIndex("ticket_code_uq").on(t.code),
-    // safety net: a paid order never gets two tickets, even if the gateway calls back twice
+    // one ticket per order, even if the gateway calls back twice
     uniqueIndex("ticket_order_uq").on(t.orderId),
     index("ticket_user_idx").on(t.userId),
     index("ticket_trip_idx").on(t.tripId),
