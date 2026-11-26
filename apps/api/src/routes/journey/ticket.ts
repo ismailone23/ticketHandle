@@ -24,6 +24,7 @@ import { env } from "@acme/server/env";
 import { log } from "@acme/server/log";
 import { isUniqueViolation } from "@acme/server/lib";
 import { departureAt, refundPercent } from "./refund";
+import { memo } from "../../lib/memo";
 import { streamSSE } from "hono/streaming";
 import {
   publishSeats,
@@ -59,8 +60,28 @@ ticketRoute.get(
     }),
   ),
   async (c) => {
-    const { fromStation, journeyDate, toStation } = c.req.valid("query");
+    const q = c.req.valid("query");
+    // 1s in-process: a rush of identical searches costs one DB query per second
+    const { status, body } = await memo(
+      JSON.stringify(["search", q.fromStation, q.toStation, q.journeyDate]),
+      1000,
+      () => searchTrips(q),
+    );
+    return c.body(body, status, JSON_TYPE);
+  },
+);
 
+const JSON_TYPE = { "content-type": "application/json" };
+
+const searchTrips = async ({
+  fromStation,
+  journeyDate,
+  toStation,
+}: {
+  fromStation: string;
+  journeyDate: string;
+  toStation: string;
+}): Promise<{ status: 200 | 201; body: string }> => {
     const key = `search:v${await getTrainsVersion()}:${fromStation}:${toStation}:${journeyDate}`;
 
     const cachedResult = await cached(key, 600, () =>
@@ -74,7 +95,7 @@ ticketRoute.get(
     );
 
     if (!availableTrain) {
-      return c.json({ data: [] }, 201);
+      return { status: 201, body: JSON.stringify({ data: [] }) };
     }
 
     // free seats + lowest price per class
@@ -103,9 +124,8 @@ ticketRoute.get(
         .map(({ tripId: _, ...rest }) => rest),
     }));
 
-    return c.json({ data: items });
-  },
-);
+    return { status: 200, body: JSON.stringify({ data: items }) };
+};
 // public seat info only (no orderId)
 // one class, or every class when type is omitted (the seat page switches classes locally)
 const seatMap = (tripId: string, type?: (typeof seatType.enumValues)[number]) =>
@@ -135,14 +155,14 @@ const seatMapParams = [
   ),
 ] as const;
 
-// seat map, cached 2s
+// seat map, cached 2s in-process as the finished JSON (no Redis round trip, no re-parse of ~30 KB)
 ticketRoute.get("/trips/:tripId/seats", ...seatMapParams, async (c) => {
   const { tripId } = c.req.valid("param");
   const { seatType: type } = c.req.valid("query");
-  const seats = await cached(`seats:${tripId}:${type ?? "all"}`, 2, () =>
-    seatMap(tripId, type),
+  const body = await memo(`seats:${tripId}:${type ?? "all"}`, 2000, async () =>
+    JSON.stringify({ data: await seatMap(tripId, type) }),
   );
-  return c.json({ data: seats });
+  return c.body(body, 200, JSON_TYPE);
 });
 
 // live seat map (SSE): one "snapshot", then "seats" events with changes only

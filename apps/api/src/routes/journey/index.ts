@@ -5,18 +5,20 @@ import { cached, getTrainsVersion } from "@acme/db/redis";
 import { Hono } from "hono";
 import { requireAuth, requirePermission } from "../../middleware/guard.js";
 import { ticketRoute } from "./ticket.js";
+import { memo } from "../../lib/memo.js";
 
 export const journeyRoute = new Hono<AppEnv>();
 
 // public, registered before the auth guard: station names for the search box
 journeyRoute.get("/ticket/stations", async (c) => {
-  const data = await cached(`stations:v${await getTrainsVersion()}`, 3600, async () => {
+  // 5s in-process on top of Redis: skips two Redis round trips per request
+  const data = await memo("stations", 5000, async () => cached(`stations:v${await getTrainsVersion()}`, 3600, async () => {
     const rows = await db
       .selectDistinct({ name: train.fromStation })
       .from(train)
       .union(db.selectDistinct({ name: train.toStation }).from(train));
     return rows.map((r) => r.name).sort((a, b) => a.localeCompare(b));
-  });
+  }));
   return c.json({ data });
 });
 
