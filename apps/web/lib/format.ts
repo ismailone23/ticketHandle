@@ -44,7 +44,19 @@ export const todayInDhaka = () =>
   );
 
 // only same-site paths: "//evil.com" and "https://…" would leave the site after login
-export const safeNext = (raw: string | null) => (raw?.startsWith("/") && !raw.startsWith("//") && !raw.startsWith("/\\") ? raw : "/");
+export const safeNext = (raw: string | null) =>
+  raw?.startsWith("/") && !raw.startsWith("//") && !raw.startsWith("/\\")
+    ? raw
+    : "/";
 
-const DAYS: Record<string, string> = { SUN: "Sunday", MON: "Monday", TUE: "Tuesday", WED: "Wednesday", THU: "Thursday", FRI: "Friday", SAT: "Saturday" };
-export const serviceDays = (offDay: string | null) => (offDay ? `No service on ${DAYS[offDay] ?? offDay}` : "Runs every day");
+const DAYS: Record<string, string> = {
+  SUN: "Sunday",
+  MON: "Monday",
+  TUE: "Tuesday",
+  WED: "Wednesday",
+  THU: "Thursday",
+  FRI: "Friday",
+  SAT: "Saturday",
+};
+export const serviceDays = (offDay: string | null) =>
+  offDay ? `No service on ${DAYS[offDay] ?? offDay}` : "Runs every day";

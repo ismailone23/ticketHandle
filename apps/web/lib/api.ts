@@ -6,8 +6,14 @@ const BASE = `${API_URL}/api/journey/ticket`;
 export const errorText = (e: unknown): string => {
   if (typeof e === "string") return e;
   try {
-    const [first] = JSON.parse((e as { message: string }).message) as { path: (string | number)[]; message: string }[];
-    if (first) return first.path.length ? `${first.path.join(".")}: ${first.message}` : first.message;
+    const [first] = JSON.parse((e as { message: string }).message) as {
+      path: (string | number)[];
+      message: string;
+    }[];
+    if (first)
+      return first.path.length
+        ? `${first.path.join(".")}: ${first.message}`
+        : first.message;
   } catch {}
   return "Something went wrong";
 };
@@ -24,14 +30,16 @@ export class ApiError extends Error {
 // every journey route needs the session cookie from the API's domain
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   // "/api/..." paths (admin) go to the API root, the rest to the ticket routes
-  const res = await fetch(path.startsWith("/api/") ? API_URL + path : BASE + path, {
-    ...init,
-    credentials: "include",
-    headers: { "content-type": "application/json", ...init.headers },
-  });
+  const res = await fetch(
+    path.startsWith("/api/") ? API_URL + path : BASE + path,
+    {
+      ...init,
+      credentials: "include",
+      headers: { "content-type": "application/json", ...init.headers },
+    },
+  );
   const body = await res.json().catch(() => ({}));
-  if (!res.ok)
-    throw new ApiError(res.status, errorText(body.error));
+  if (!res.ok) throw new ApiError(res.status, errorText(body.error));
   return body.data as T;
 }
 
@@ -89,7 +97,13 @@ export type Order = {
   toStation: string;
 };
 
-export type Coach = { code: string; position: number; seatType: SeatType; seatCount: number; price: number };
+export type Coach = {
+  code: string;
+  position: number;
+  seatType: SeatType;
+  seatCount: number;
+  price: number;
+};
 export type Train = {
   id: string;
   number: number;
@@ -111,4 +125,3 @@ export type AdminTrip = {
   booked: number;
   held: number;
 };
-

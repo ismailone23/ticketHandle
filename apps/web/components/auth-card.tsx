@@ -1,5 +1,12 @@
 import { CoachPreview } from "@/components/coach-preview";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export function AuthCard({
   title,
@@ -20,7 +27,11 @@ export function AuthCard({
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>{children}</CardContent>
-        {footer ? <CardFooter className="text-sm text-muted-foreground">{footer}</CardFooter> : null}
+        {footer ? (
+          <CardFooter className="text-sm text-muted-foreground">
+            {footer}
+          </CardFooter>
+        ) : null}
       </Card>
       <div className="hidden justify-center lg:flex">
         <CoachPreview />

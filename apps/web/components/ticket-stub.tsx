@@ -78,23 +78,23 @@ export function TicketStub({
             ) : null}
           </div>
           <div className="flex flex-col gap-2">
-          <div className="flex items-baseline gap-4 text-xs text-muted-foreground">
-            <span className="w-14">Seat</span>
-            <span>Passenger</span>
-          </div>
-          <ul className="flex flex-col gap-2">
-            {order.passengers.map((p) => (
-              <li
-                key={`${p.coachCode}-${p.seatNumber}`}
-                className="flex items-baseline gap-4"
-              >
-                <span className="w-14 text-sm tabular">
-                  {p.coachCode}-{p.seatNumber}
-                </span>
-                <span className="truncate">{p.name}</span>
-              </li>
-            ))}
-          </ul>
+            <div className="flex items-baseline gap-4 text-xs text-muted-foreground">
+              <span className="w-14">Seat</span>
+              <span>Passenger</span>
+            </div>
+            <ul className="flex flex-col gap-2">
+              {order.passengers.map((p) => (
+                <li
+                  key={`${p.coachCode}-${p.seatNumber}`}
+                  className="flex items-baseline gap-4"
+                >
+                  <span className="w-14 text-sm tabular">
+                    {p.coachCode}-{p.seatNumber}
+                  </span>
+                  <span className="truncate">{p.name}</span>
+                </li>
+              ))}
+            </ul>
           </div>
           <p className="text-sm tabular text-muted-foreground">
             Paid {taka(order.totalAmount)}

@@ -4,9 +4,23 @@ import { TrainFrontIcon } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useSession } from "@/components/session-provider";
 import type { ApiError, Train } from "@/lib/api";
 import { NewTrainDialog } from "./new-train-dialog";
@@ -47,7 +61,9 @@ export function TrainList() {
               <TrainFrontIcon />
             </EmptyMedia>
             <EmptyTitle>No trains yet</EmptyTitle>
-            <EmptyDescription>Add a train with its coaches, then schedule trips for it.</EmptyDescription>
+            <EmptyDescription>
+              Add a train with its coaches, then schedule trips for it.
+            </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
             <NewTrainDialog onCreated={load} />
@@ -69,7 +85,10 @@ export function TrainList() {
                 <TableRow key={t.id}>
                   <TableCell className="tabular">{t.number}</TableCell>
                   <TableCell>
-                    <Link href={`/admin/trains/${t.number}`} className="font-medium underline-offset-4 hover:underline">
+                    <Link
+                      href={`/admin/trains/${t.number}`}
+                      className="font-medium underline-offset-4 hover:underline"
+                    >
                       {t.name}
                     </Link>
                   </TableCell>
@@ -78,7 +97,10 @@ export function TrainList() {
                   </TableCell>
                   <TableCell className="text-right tabular">
                     {t.coaches.reduce((n, c) => n + c.seatCount, 0)}
-                    <span className="text-muted-foreground"> · {t.coaches.length} coaches</span>
+                    <span className="text-muted-foreground">
+                      {" "}
+                      · {t.coaches.length} coaches
+                    </span>
                   </TableCell>
                 </TableRow>
               ))}

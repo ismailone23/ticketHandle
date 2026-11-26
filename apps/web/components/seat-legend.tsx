@@ -18,10 +18,21 @@ const ITEMS: [keyof typeof SEAT_LOOK, string][] = [
 // each swatch is a tiny seat with a number, so "crossed out" reads as booked without explanation
 export function SeatLegend({ className }: { className?: string }) {
   return (
-    <ul className={cn("flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground", className)}>
+    <ul
+      className={cn(
+        "flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground",
+        className,
+      )}
+    >
       {ITEMS.map(([look, label]) => (
         <li key={look} className="flex items-center gap-1.5">
-          <span className={cn("flex size-5 items-center justify-center rounded border text-[10px] tabular", SEAT_LOOK[look])} aria-hidden>
+          <span
+            className={cn(
+              "flex size-5 items-center justify-center rounded border text-[10px] tabular",
+              SEAT_LOOK[look],
+            )}
+            aria-hidden
+          >
             7
           </span>
           {label}

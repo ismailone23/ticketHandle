@@ -101,7 +101,9 @@ export function SearchResults() {
       </p>
       {state.data.map(({ train, trip, classes }) => {
         const ordered = [...classes].sort(
-          (a, b) => Number(b.seatType === seatType) - Number(a.seatType === seatType) || CLASS_ORDER.indexOf(a.seatType) - CLASS_ORDER.indexOf(b.seatType),
+          (a, b) =>
+            Number(b.seatType === seatType) - Number(a.seatType === seatType) ||
+            CLASS_ORDER.indexOf(a.seatType) - CLASS_ORDER.indexOf(b.seatType),
         );
         const link = (t: SeatType) =>
           `/trips/${trip.id}?${new URLSearchParams({
@@ -114,27 +116,45 @@ export function SearchResults() {
             dep: trip.departureTime,
           })}`;
         return (
-          <article key={trip.id} className="flex flex-col rounded-xl border bg-card">
+          <article
+            key={trip.id}
+            className="flex flex-col rounded-xl border bg-card"
+          >
             <div className="flex flex-col gap-3 p-5">
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="truncate font-medium">{train.name}</h2>
-                <span className="text-xs text-muted-foreground">#{train.number}</span>
+                <span className="text-xs text-muted-foreground">
+                  #{train.number}
+                </span>
               </div>
               {/* departure and arrival, each under its station, with the journey time between */}
               <div className="grid grid-cols-[auto_1fr_auto] items-start gap-3">
                 <div className="flex flex-col">
-                  <span className="text-xl tabular">{clock(trip.departureTime)}</span>
-                  <span className="truncate text-sm text-muted-foreground">{train.fromStation}</span>
+                  <span className="text-xl tabular">
+                    {clock(trip.departureTime)}
+                  </span>
+                  <span className="truncate text-sm text-muted-foreground">
+                    {train.fromStation}
+                  </span>
                 </div>
-                <div className="pt-3" aria-label={`Journey time ${duration(trip)}`}>
+                <div
+                  className="pt-3"
+                  aria-label={`Journey time ${duration(trip)}`}
+                >
                   <RouteLine label={duration(trip)} />
                 </div>
                 <div className="flex flex-col items-end">
                   <span className="text-xl tabular">
                     {clock(trip.arrivalTime)}
-                    {trip.arrivalDayOffset ? <sup className="ml-0.5 text-xs text-muted-foreground">+{trip.arrivalDayOffset}</sup> : null}
+                    {trip.arrivalDayOffset ? (
+                      <sup className="ml-0.5 text-xs text-muted-foreground">
+                        +{trip.arrivalDayOffset}
+                      </sup>
+                    ) : null}
                   </span>
-                  <span className="truncate text-sm text-muted-foreground">{train.toStation}</span>
+                  <span className="truncate text-sm text-muted-foreground">
+                    {train.toStation}
+                  </span>
                 </div>
               </div>
             </div>
@@ -143,13 +163,20 @@ export function SearchResults() {
               {ordered.map((c) => (
                 <li
                   key={c.seatType}
-                  className={cn("flex flex-col gap-3 rounded-lg border p-4", c.seatType === seatType && "border-primary")}
+                  className={cn(
+                    "flex flex-col gap-3 rounded-lg border p-4",
+                    c.seatType === seatType && "border-primary",
+                  )}
                 >
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-sm font-medium">{CLASS_NAMES[c.seatType]}</span>
+                    <span className="text-sm font-medium">
+                      {CLASS_NAMES[c.seatType]}
+                    </span>
                     <span className="text-lg tabular">{taka(c.fromPrice)}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground tabular">{c.available ? `${c.available} seats left` : "Sold out"}</span>
+                  <span className="text-xs text-muted-foreground tabular">
+                    {c.available ? `${c.available} seats left` : "Sold out"}
+                  </span>
                   <Button
                     size="sm"
                     variant={c.seatType === seatType ? "default" : "outline"}
