@@ -5,19 +5,35 @@ import { zValidator } from "@hono/zod-validator";
 import { insertTripSchema, updateTripSchema } from "../../types";
 import { db } from "@acme/db/db";
 import { invalidateTrains } from "@acme/db/redis";
-import { order, ticket, trip, tripSeat } from "@acme/db/db/schema";
+import { coach, order, ticket, trip, tripSeat } from "@acme/db/db/schema";
 import { tripDbError } from "@acme/server/lib";
-import { and, asc, eq, inArray, or } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { departureAt } from "../journey/refund";
 import { z } from "zod";
 export const tripRoute = new Hono<AppEnv>();
 
 // Todo: add a corn job or background function to auto update the trip status for departed
 tripRoute.post("/add-trip", zValidator("json", insertTripSchema), async (c) => {
-  const { seats, ...tripD } = c.req.valid("json");
+  const { seats: given, ...tripD } = c.req.valid("json");
   try {
     const created = await db.transaction(async (tx) => {
       const [newTrip] = await tx.insert(trip).values(tripD).returning();
       if (!newTrip) throw Error("Trip insert retruned nothing!");
+
+      const seats =
+        given ??
+        (
+          await tx.select().from(coach).where(eq(coach.trainId, tripD.trainId))
+        ).flatMap((k) =>
+          Array.from({ length: k.seatCount }, (_, i) => ({
+            coachCode: k.code,
+            coachPosition: k.position,
+            seatNumber: i + 1,
+            seatType: k.seatType,
+            price: k.price,
+          })),
+        );
+      if (!seats.length) throw new HTTPException(400, { message: "This train has no coaches" });
 
       const insertedSeates = await tx
         .insert(tripSeat)
@@ -29,11 +45,41 @@ tripRoute.post("/add-trip", zValidator("json", insertTripSchema), async (c) => {
     await invalidateTrains();
     return c.json({ data: created }, 201);
   } catch (err) {
+    if (err instanceof HTTPException) return c.json({ error: err.message }, 400);
     const e = tripDbError(err);
     if (e) return c.json({ error: e.error }, e.status);
     throw err;
   }
 });
+
+// a train's trips, newest date first, with how many seats are sold or held
+tripRoute.get(
+  "/trips",
+  zValidator("query", z.object({ trainId: z.uuid() })),
+  async (c) => {
+    const { trainId } = c.req.valid("query");
+    const rows = await db
+      .select({
+        id: trip.id,
+        journeyDate: trip.journeyDate,
+        departureTime: trip.departureTime,
+        arrivalTime: trip.arrivalTime,
+        arrivalDayOffset: trip.arrivalDayOffset,
+        salesOpenAt: trip.salesOpenAt,
+        status: trip.status,
+        seats: count(tripSeat.id),
+        booked: sql<number>`count(*) filter (where ${tripSeat.status} = 'booked')::int`,
+        held: sql<number>`count(*) filter (where ${tripSeat.status} = 'reserved')::int`,
+      })
+      .from(trip)
+      .leftJoin(tripSeat, eq(tripSeat.tripId, trip.id))
+      .where(eq(trip.trainId, trainId))
+      .groupBy(trip.id)
+      .orderBy(desc(trip.journeyDate), desc(trip.departureTime))
+      .limit(100);
+    return c.json({ data: rows });
+  },
+);
 
 tripRoute.put(
   "/update-trip/:tripId",
@@ -51,13 +97,38 @@ tripRoute.put(
       const updated = await db.transaction(async (tx) => {
         // lock the trip so two admins can't edit it at once
         const [t] = await tx
-          .select({ status: trip.status })
+          .select({
+            status: trip.status,
+            journeyDate: trip.journeyDate,
+            departureTime: trip.departureTime,
+          })
           .from(trip)
           .where(eq(trip.id, tripId))
           .for("update");
         if (!t) return fail(404, "Trip not found");
         if (t.status !== "scheduled")
           return fail(409, `Trip is ${t.status} and can't be changed`);
+
+        if (Object.keys(times).length) {
+          const dep = times.departureTime ?? t.departureTime;
+          if (departureAt(t.journeyDate, dep) <= new Date())
+            return fail(409, "New departure time is already in the past");
+          // passengers bought for the old time; rescheduling = cancel-trip, which refunds them
+          const [sold] = await tx
+            .select({ n: count() })
+            .from(tripSeat)
+            .where(
+              and(
+                eq(tripSeat.tripId, tripId),
+                inArray(tripSeat.status, ["reserved", "booked"]),
+              ),
+            );
+          if (sold!.n)
+            return fail(
+              409,
+              `${sold!.n} seats are held or sold; cancel the trip instead of changing its times`,
+            );
+        }
 
         if (detach) {
           const inCoaches = and(
@@ -184,13 +255,17 @@ tripRoute.post(
         .set({ status: "cancelled" })
         .where(and(eq(order.tripId, tripId), eq(order.status, "pending")));
 
-      // paid orders are NOT marked refunded here: that needs a real gateway refund
-
-      // also send email to notify the customers
+      // our fault, so paid customers get everything back via the admin refund queue
+      // Todo: email the customers
       const paid = await tx
-        .select({ id: order.id })
-        .from(order)
-        .where(and(eq(order.tripId, tripId), eq(order.status, "paid")));
+        .update(order)
+        .set({
+          status: "cancelled",
+          cancelledAt: new Date(),
+          refundAmount: sql`${order.totalAmount}`,
+        })
+        .where(and(eq(order.tripId, tripId), eq(order.status, "paid")))
+        .returning({ id: order.id });
 
       return {
         data: {

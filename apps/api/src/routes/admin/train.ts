@@ -13,7 +13,12 @@ import {
 } from "@acme/server/services";
 import * as z from "zod";
 import { zValidator } from "@hono/zod-validator";
-import { insertTrainSchema, querySchema, updateTrainSchema } from "../../types";
+import {
+  insertTrainSchema,
+  MAX_TRAIN_NUMBER,
+  querySchema,
+  updateTrainSchema,
+} from "../../types";
 import { db } from "@acme/db/db";
 import { coach, train } from "@acme/db/db/schema";
 import { eq } from "drizzle-orm";
@@ -34,7 +39,7 @@ trainRoute.get("/all-trains", zValidator("query", querySchema), async (c) => {
 
 trainRoute.get("/trains/number/:number", async (c) => {
   const number = Number(c.req.param("number"));
-  if (!Number.isInteger(number))
+  if (!Number.isInteger(number) || number < 1 || number > MAX_TRAIN_NUMBER)
     return c.json({ error: "Invalid number" }, 400);
 
   const data = await cached(`train:number:${number}`, 300, () =>
@@ -75,7 +80,7 @@ trainRoute.post(
 
 trainRoute.put(
   "/update-train/:trainId",
-  zValidator("param", z.object({ trainId: z.string() })),
+  zValidator("param", z.object({ trainId: z.uuid() })),
   zValidator("json", updateTrainSchema),
   async (c) => {
     const { trainId } = c.req.valid("param");

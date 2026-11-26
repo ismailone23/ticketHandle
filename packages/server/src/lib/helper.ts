@@ -21,5 +21,8 @@ export const tripDbError = (err: unknown) => {
     return { error: "Arrival must be after departure", status: 400 } as const;
   if (isUniqueViolation(err, "trip_seat_position_uq"))
     return { error: "Duplicate seat in this trip", status: 409 } as const;
+  // 23503 = foreign key: the trainId doesn't exist
+  if (pgError(err, "23503", "trip_train_id_train_id_fkey"))
+    return { error: "Train not found", status: 404 } as const;
   return null;
 };
