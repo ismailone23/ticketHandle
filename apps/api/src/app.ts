@@ -6,6 +6,7 @@ import { auth } from "@acme/auth";
 import { sessionMiddleware } from "./middleware/session.js";
 import { adminRoute } from "./routes/admin/index.js";
 import { journeyRoute } from "./routes/journey";
+import { paymentRoute } from "./routes/payments";
 const app = new Hono();
 
 app.use(
@@ -13,7 +14,7 @@ app.use(
   cors({
     origin: env.WEB_ORIGIN,
     credentials: true,
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "Authorization", "Idempotency-Key"],
     allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
   }),
 );
@@ -39,6 +40,9 @@ app.onError((err, c) => {
 app.get("/api/ping", (c) => {
   return c.json({ message: "Service is running", status: "OK" });
 });
+
+// before sessionMiddleware: Stripe has no session
+app.route("/api/payments", paymentRoute);
 
 app.use("*", sessionMiddleware);
 
