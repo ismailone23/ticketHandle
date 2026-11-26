@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "@/components/session-provider";
+import { isAdmin, useSession } from "@/components/session-provider";
 import { Button } from "@/components/ui/button";
 
 export function SiteHeader() {
@@ -9,17 +9,22 @@ export function SiteHeader() {
 
   return (
     <header className="border-b">
-      <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-4">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Link
           href="/"
-          className="font-mono text-sm font-semibold tracking-tight"
+          className="text-sm font-semibold tracking-tight"
         >
           TicketHandle
         </Link>
         {loading ? null : user ? (
           <div className="flex items-center gap-3">
+            {isAdmin(user) ? (
+              <Button variant="ghost" size="sm" render={<Link href="/admin" />} nativeButton={false}>
+                Admin
+              </Button>
+            ) : null}
             <span className="hidden truncate text-sm text-muted-foreground sm:inline">
-              {user.email}
+              {user.name || user.email}
             </span>
             <Button variant="ghost" size="sm" onClick={signOut}>
               Sign out

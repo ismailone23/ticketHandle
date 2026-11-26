@@ -35,7 +35,7 @@ export function OrderView({ id }: { id: string }) {
 
   if (error)
     return (
-      <Alert variant="destructive">
+      <Alert variant="destructive" className="mx-auto max-w-3xl">
         <AlertTitle>Couldn't open this order</AlertTitle>
         <AlertDescription>{error}</AlertDescription>
       </Alert>
@@ -47,7 +47,7 @@ export function OrderView({ id }: { id: string }) {
 
   if (order.status === "pending" && justPaid)
     return (
-      <Alert>
+      <Alert className="mx-auto max-w-3xl">
         <Spinner />
         <AlertTitle>Confirming your payment</AlertTitle>
         <AlertDescription>
@@ -69,7 +69,7 @@ export function OrderView({ id }: { id: string }) {
     refunded: ["Refunded", "The refund has been sent to your card."],
   }[order.status];
   return (
-    <Alert>
+    <Alert className="mx-auto max-w-3xl">
       <AlertTitle>{closed[0]}</AlertTitle>
       <AlertDescription>
         {closed[1]}

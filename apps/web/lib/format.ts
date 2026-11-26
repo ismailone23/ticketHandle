@@ -9,7 +9,7 @@ export const CLASS_NAMES: Record<SeatType, string> = {
 
 // prices are poisha
 export const taka = (poisha: number) =>
-  `৳${(poisha / 100).toLocaleString("en-BD", { maximumFractionDigits: 2 })}`;
+  `৳${(poisha / 100).toLocaleString("en-BD", poisha % 100 ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : {})}`;
 
 // "14:05:00" → "2:05 PM"
 export const clock = (time: string) => {
@@ -45,3 +45,6 @@ export const todayInDhaka = () =>
 
 // only same-site paths: "//evil.com" and "https://…" would leave the site after login
 export const safeNext = (raw: string | null) => (raw?.startsWith("/") && !raw.startsWith("//") && !raw.startsWith("/\\") ? raw : "/");
+
+const DAYS: Record<string, string> = { SUN: "Sunday", MON: "Monday", TUE: "Tuesday", WED: "Wednesday", THU: "Thursday", FRI: "Friday", SAT: "Saturday" };
+export const serviceDays = (offDay: string | null) => (offDay ? `No service on ${DAYS[offDay] ?? offDay}` : "Runs every day");

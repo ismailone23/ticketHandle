@@ -5,7 +5,9 @@ export default async function TripPage({ params }: { params: Promise<{ tripId: s
   const { tripId } = await params;
   return (
     <Suspense>
-      <SeatPicker tripId={tripId} />
+      <div className="mx-auto w-full max-w-5xl">
+        <SeatPicker tripId={tripId} />
+      </div>
     </Suspense>
   );
 }

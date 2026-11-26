@@ -2,25 +2,28 @@
 
 import { ArrowLeftRightIcon, CalendarIcon } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Field, FieldLabel } from "@/components/ui/field";
 import {
-  Field,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@/components/ui/combobox";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import type { SeatType } from "@/lib/api";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { api, type SeatType } from "@/lib/api";
 import { CLASS_NAMES, longDate, todayInDhaka } from "@/lib/format";
+
+const CLASSES = (Object.keys(CLASS_NAMES) as SeatType[]).map((value) => ({ value, label: CLASS_NAMES[value] }));
 
 const toIso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -35,69 +38,49 @@ export function SearchForm() {
     (params.get("class") as SeatType) ?? "s_chair",
   );
   const [open, setOpen] = useState(false);
+  const [stations, setStations] = useState<string[]>([]);
+  useEffect(() => {
+    api<string[]>("/stations").then(setStations).catch(() => {});
+  }, []);
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        const q = new URLSearchParams({
-          from: from.trim(),
-          to: to.trim(),
-          date,
-          class: seatType,
-        });
+        const q = new URLSearchParams({ from: from.trim(), to: to.trim(), date, class: seatType });
         router.push(`/?${q}`);
       }}
+      className="flex flex-col gap-5 rounded-xl border bg-card p-5"
     >
-      <FieldGroup>
-        <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-2">
-          <Field>
-            <FieldLabel htmlFor="from">From</FieldLabel>
-            <Input
-              id="from"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              placeholder="Dhaka"
-              required
-            />
-          </Field>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Swap stations"
-            onClick={() => {
-              setFrom(to);
-              setTo(from);
-            }}
-          >
-            <ArrowLeftRightIcon />
-          </Button>
-          <Field>
-            <FieldLabel htmlFor="to">To</FieldLabel>
-            <Input
-              id="to"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              placeholder="Chattogram"
-              required
-            />
-          </Field>
-        </div>
-
+      <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
         <Field>
-          <FieldLabel htmlFor="date">Journey date</FieldLabel>
+          <FieldLabel htmlFor="from" className="text-muted-foreground">From station</FieldLabel>
+          <StationPicker id="from" value={from} onChange={setFrom} stations={stations} placeholder="Pick a station" />
+        </Field>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-lg"
+          className="rounded-full"
+          aria-label="Swap stations"
+          onClick={() => {
+            setFrom(to);
+            setTo(from);
+          }}
+        >
+          <ArrowLeftRightIcon />
+        </Button>
+        <Field>
+          <FieldLabel htmlFor="to" className="text-muted-foreground">To station</FieldLabel>
+          <StationPicker id="to" value={to} onChange={setTo} stations={stations.filter((s) => s !== from)} placeholder="Pick a station" />
+        </Field>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field>
+          <FieldLabel htmlFor="date" className="text-muted-foreground">Journey date</FieldLabel>
           <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger
-              render={
-                <Button
-                  id="date"
-                  type="button"
-                  variant="outline"
-                  className="justify-start"
-                />
-              }
-            >
+            <PopoverTrigger render={<Button id="date" type="button" variant="outline" size="lg" className="justify-start bg-transparent text-base tabular md:text-sm" />}>
               <CalendarIcon data-icon="inline-start" />
               {longDate(date)}
             </PopoverTrigger>
@@ -114,27 +97,79 @@ export function SearchForm() {
             </PopoverContent>
           </Popover>
         </Field>
+        <Field>
+          <FieldLabel htmlFor="class" className="text-muted-foreground">Class</FieldLabel>
+          <Select items={CLASSES} value={seatType} onValueChange={(v) => v && setSeatType(v as SeatType)}>
+            <SelectTrigger id="class" className="w-full text-base data-[size=default]:h-9 md:text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {CLASSES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </Field>
+      </div>
 
-        <FieldSet>
-          <FieldLegend variant="label">Class</FieldLegend>
-          <ToggleGroup
-            variant="outline"
-            value={[seatType]}
-            onValueChange={(v) => v[0] && setSeatType(v[0] as SeatType)}
-            className="flex-wrap"
-          >
-            {(Object.keys(CLASS_NAMES) as SeatType[]).map((t) => (
-              <ToggleGroupItem key={t} value={t}>
-                {CLASS_NAMES[t]}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        </FieldSet>
-
-        <Button type="submit" size="lg" className="sm:self-start">
-          Find trains
-        </Button>
-      </FieldGroup>
+      <Button type="submit" size="lg">
+        Find trains
+      </Button>
     </form>
+  );
+}
+
+function StationPicker({
+  id,
+  value,
+  onChange,
+  stations,
+  placeholder,
+}: {
+  id: string;
+  value: string;
+  onChange: (v: string) => void;
+  stations: string[];
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState(value);
+  // a value set from outside (swap button, URL) shows in the box too
+  useEffect(() => setQuery(value), [value]);
+  return (
+    // suggestions only once something is typed, and never more than 8: the list stays short at any station count
+    <Combobox
+      items={stations}
+      limit={8}
+      value={value || null}
+      onValueChange={(v) => onChange((v as string | null) ?? "")}
+      inputValue={query}
+      onInputValueChange={setQuery}
+      open={open && query.trim().length > 0}
+      onOpenChange={setOpen}
+      openOnInputClick={false}
+    >
+      <ComboboxInput
+        id={id}
+        placeholder={placeholder}
+        required
+        showTrigger={false}
+        className="h-9 [&_input::placeholder]:text-muted-foreground/70"
+      />
+      <ComboboxContent>
+        <ComboboxEmpty>No station by that name.</ComboboxEmpty>
+        <ComboboxList>
+          {(item: string) => (
+            <ComboboxItem key={item} value={item}>
+              {item}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
   );
 }

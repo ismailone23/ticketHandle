@@ -2,6 +2,16 @@ export const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5030";
 const BASE = `${API_URL}/api/journey/ticket`;
 
+// validation failures arrive as a zod error whose message is a JSON list of issues
+export const errorText = (e: unknown): string => {
+  if (typeof e === "string") return e;
+  try {
+    const [first] = JSON.parse((e as { message: string }).message) as { path: (string | number)[]; message: string }[];
+    if (first) return first.path.length ? `${first.path.join(".")}: ${first.message}` : first.message;
+  } catch {}
+  return "Something went wrong";
+};
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -13,14 +23,15 @@ export class ApiError extends Error {
 
 // every journey route needs the session cookie from the API's domain
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(BASE + path, {
+  // "/api/..." paths (admin) go to the API root, the rest to the ticket routes
+  const res = await fetch(path.startsWith("/api/") ? API_URL + path : BASE + path, {
     ...init,
     credentials: "include",
     headers: { "content-type": "application/json", ...init.headers },
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok)
-    throw new ApiError(res.status, body.error ?? "Something went wrong");
+    throw new ApiError(res.status, errorText(body.error));
   return body.data as T;
 }
 
@@ -76,3 +87,27 @@ export type Order = {
   fromStation: string;
   toStation: string;
 };
+
+export type Coach = { code: string; position: number; seatType: SeatType; seatCount: number; price: number };
+export type Train = {
+  id: string;
+  number: number;
+  name: string;
+  fromStation: string;
+  toStation: string;
+  offDay: string | null;
+  coaches: Coach[];
+};
+export type AdminTrip = {
+  id: string;
+  journeyDate: string;
+  departureTime: string;
+  arrivalTime: string;
+  arrivalDayOffset: number;
+  salesOpenAt: string;
+  status: "scheduled" | "cancelled" | "departed" | "completed";
+  seats: number;
+  booked: number;
+  held: number;
+};
+

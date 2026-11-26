@@ -9,7 +9,9 @@ export default async function OrderPage({
   const { id } = await params;
   return (
     <Suspense>
-      <OrderView id={id} />
+      <div className="mx-auto w-full max-w-5xl">
+        <OrderView id={id} />
+      </div>
     </Suspense>
   );
 }

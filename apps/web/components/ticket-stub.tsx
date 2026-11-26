@@ -16,7 +16,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { useSession } from "@/components/session-provider";
 import { type ApiError, type Order } from "@/lib/api";
 import { refundPercent, taka } from "@/lib/format";
@@ -60,7 +59,7 @@ export function TicketStub({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <article
         className="flex flex-col rounded-lg border bg-card sm:flex-row"
         aria-label="Ticket"
@@ -78,28 +77,30 @@ export function TicketStub({
               </Badge>
             ) : null}
           </div>
+          <div className="flex flex-col gap-2">
+          <div className="flex items-baseline gap-4 text-xs text-muted-foreground">
+            <span className="w-14">Seat</span>
+            <span>Passenger</span>
+          </div>
           <ul className="flex flex-col gap-2">
             {order.passengers.map((p) => (
               <li
                 key={`${p.coachCode}-${p.seatNumber}`}
                 className="flex items-baseline gap-4"
               >
-                <span className="w-14 font-mono text-sm tabular">
+                <span className="w-14 text-sm tabular">
                   {p.coachCode}-{p.seatNumber}
                 </span>
                 <span className="truncate">{p.name}</span>
               </li>
             ))}
           </ul>
-          <p className="font-mono text-sm tabular text-muted-foreground">
+          </div>
+          <p className="text-sm tabular text-muted-foreground">
             Paid {taka(order.totalAmount)}
           </p>
         </div>
-        <Separator
-          orientation="vertical"
-          className="hidden border-l border-dashed bg-transparent sm:block"
-        />
-        <Separator className="border-t border-dashed bg-transparent sm:hidden" />
+        <div className="border-t sm:border-t-0 sm:border-l" aria-hidden />
         <div className="flex flex-col items-center justify-center gap-3 p-5">
           {order.ticketCode ? (
             <>
@@ -110,9 +111,9 @@ export function TicketStub({
                 bgColor="transparent"
                 aria-label="Ticket QR code"
               />
-              <code className="font-mono text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground tabular">
                 {order.ticketCode}
-              </code>
+              </span>
             </>
           ) : null}
         </div>

@@ -5,7 +5,10 @@ import { createContext, useCallback, useContext, useMemo } from "react";
 import { ApiError, api } from "@/lib/api";
 import { authClient } from "@/lib/auth-client";
 
-type User = { id: string; name: string; email: string };
+type User = { id: string; name: string; email: string; role?: string | null };
+
+export const isAdmin = (u: { role?: string | null } | null | undefined) =>
+  !!u?.role?.split(",").includes("admin");
 type SessionContext = {
   user: User | null;
   loading: boolean;

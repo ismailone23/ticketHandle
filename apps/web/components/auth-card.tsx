@@ -1,11 +1,5 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { CoachPreview } from "@/components/coach-preview";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 
 export function AuthCard({
   title,
@@ -19,17 +13,18 @@ export function AuthCard({
   footer?: React.ReactNode;
 }) {
   return (
-    <Card className="mx-auto w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>{children}</CardContent>
-      {footer ? (
-        <CardFooter className="text-sm text-muted-foreground">
-          {footer}
-        </CardFooter>
-      ) : null}
-    </Card>
+    <div className="grid items-center gap-12 lg:min-h-[calc(100dvh-11.5rem-1px)] lg:grid-cols-2">
+      <Card className="mx-auto w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-xl">{title}</CardTitle>
+          <CardDescription>{description}</CardDescription>
+        </CardHeader>
+        <CardContent>{children}</CardContent>
+        {footer ? <CardFooter className="text-sm text-muted-foreground">{footer}</CardFooter> : null}
+      </Card>
+      <div className="hidden justify-center lg:flex">
+        <CoachPreview />
+      </div>
+    </div>
   );
 }

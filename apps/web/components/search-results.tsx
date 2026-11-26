@@ -14,7 +14,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { Separator } from "@/components/ui/separator";
+import { RouteLine } from "@/components/route-line";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSession } from "@/components/session-provider";
 import { type ApiError, type SearchResult, type SeatType } from "@/lib/api";
@@ -102,7 +102,8 @@ export function SearchResults() {
         const cls = classes.find((c) => c.seatType === seatType);
         const q = new URLSearchParams({
           class: seatType,
-          train: `${train.name} (${train.number})`,
+          train: train.name,
+          num: String(train.number),
           from: train.fromStation,
           to: train.toStation,
           date: trip.journeyDate,
@@ -116,31 +117,31 @@ export function SearchResults() {
             <div className="flex flex-1 flex-col gap-3 p-4">
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="truncate font-medium">{train.name}</h2>
-                <span className="font-mono text-xs text-muted-foreground">
+                <span className="text-xs text-muted-foreground">
                   #{train.number}
                 </span>
               </div>
-              <div className="flex items-center gap-3 font-mono tabular">
-                <span className="text-xl">{clock(trip.departureTime)}</span>
-                <span className="text-xs text-muted-foreground">
-                  — {duration(trip)} —
-                </span>
-                <span className="text-xl">
-                  {clock(trip.arrivalTime)}
-                  {trip.arrivalDayOffset ? (
-                    <sup className="ml-0.5 text-xs text-muted-foreground">
-                      +{trip.arrivalDayOffset}
-                    </sup>
-                  ) : null}
-                </span>
+              {/* departure and arrival, each under its station, with the journey time between */}
+              <div className="grid grid-cols-[auto_1fr_auto] items-start gap-3">
+                <div className="flex flex-col">
+                  <span className="text-xl tabular">{clock(trip.departureTime)}</span>
+                  <span className="truncate text-sm text-muted-foreground">{train.fromStation}</span>
+                </div>
+                <div className="pt-3" aria-label={`Journey time ${duration(trip)}`}>
+                  <RouteLine label={duration(trip)} />
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-xl tabular">
+                    {clock(trip.arrivalTime)}
+                    {trip.arrivalDayOffset ? (
+                      <sup className="ml-0.5 text-xs text-muted-foreground">+{trip.arrivalDayOffset}</sup>
+                    ) : null}
+                  </span>
+                  <span className="truncate text-sm text-muted-foreground">{train.toStation}</span>
+                </div>
               </div>
             </div>
-            {/* perforation between the trip and the fare, like a ticket stub */}
-            <Separator
-              orientation="vertical"
-              className="hidden border-l border-dashed bg-transparent sm:block"
-            />
-            <Separator className="border-t border-dashed bg-transparent sm:hidden" />
+        <div className="border-t sm:border-t-0 sm:border-l" aria-hidden />
             <div className="flex items-center justify-between gap-4 p-4 sm:w-56 sm:flex-col sm:items-stretch sm:justify-center">
               {cls ? (
                 <>
@@ -148,7 +149,7 @@ export function SearchResults() {
                     <span className="text-xs text-muted-foreground">
                       {CLASS_NAMES[seatType]} from
                     </span>
-                    <span className="font-mono text-lg tabular">
+                    <span className="text-lg tabular">
                       {taka(cls.fromPrice)}
                     </span>
                     <Badge variant={cls.available ? "secondary" : "outline"}>

@@ -75,59 +75,69 @@ export function CheckoutForm({ order, onExpire }: { order: Order; onExpire: () =
   const urgent = left < 3 * 60_000;
   return (
     <form onSubmit={pay} className="flex flex-col gap-8">
-      <div className="flex items-start justify-between gap-4">
-        <TripSummary order={order} />
-        <div className="flex flex-col items-end" role="timer" aria-live="off">
-          <span className={urgent ? "font-mono text-2xl text-destructive tabular" : "font-mono text-2xl tabular"}>
-            {mmss(left)}
-          </span>
-          <span className="text-xs text-muted-foreground">seats held</span>
-        </div>
-      </div>
+      <TripSummary order={order} />
 
-      <FieldGroup>
-        {order.passengers.map((p, i) => (
-          <FieldSet key={`${p.coachCode}-${p.seatNumber}`}>
-            <FieldLegend variant="label">
-              Seat <span className="font-mono">{p.coachCode}-{p.seatNumber}</span>
-            </FieldLegend>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field>
-                <FieldLabel htmlFor={`name-${i}`}>Name as on ID</FieldLabel>
-                <Input id={`name-${i}`} name={`name-${i}`} defaultValue={p.name} maxLength={100} autoComplete={i ? "off" : "name"} required />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor={`email-${i}`}>Email (optional)</FieldLabel>
-                <Input id={`email-${i}`} name={`email-${i}`} type="email" defaultValue={p.email} />
-              </Field>
+      <div className="grid items-start gap-6 lg:grid-cols-[1fr_20rem]">
+        <FieldGroup>
+          {order.passengers.map((p, i) => (
+            <div key={`${p.coachCode}-${p.seatNumber}`} className="rounded-xl border bg-card p-5">
+              <FieldSet>
+              <FieldLegend variant="label">
+                Seat {p.coachCode}-{p.seatNumber}
+              </FieldLegend>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field>
+                  <FieldLabel htmlFor={`name-${i}`}>Name as on ID</FieldLabel>
+                  <Input id={`name-${i}`} name={`name-${i}`} defaultValue={p.name} maxLength={100} autoComplete={i ? "off" : "name"} required />
+                </Field>
+                <Field>
+                  <FieldLabel htmlFor={`email-${i}`}>Email (optional)</FieldLabel>
+                  <Input id={`email-${i}`} name={`email-${i}`} type="email" defaultValue={p.email} />
+                </Field>
+              </div>
+            </FieldSet>
             </div>
-          </FieldSet>
-        ))}
-      </FieldGroup>
+          ))}
+        </FieldGroup>
 
-      <Separator />
-
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col">
-          <span className="font-mono text-xl tabular">{taka(order.totalAmount)}</span>
-          <span className="text-xs text-muted-foreground">
-            {order.passengers.length} {order.passengers.length === 1 ? "ticket" : "tickets"}, 5% VAT included
-          </span>
-        </div>
-        <div className="flex gap-2">
-          <Button type="button" variant="ghost" disabled={!!busy} onClick={release}>
-            {busy === "release" ? <Spinner data-icon="inline-start" /> : null}
-            Release seats
-          </Button>
-          <Button type="submit" size="lg" disabled={!!busy}>
-            {busy === "pay" ? <Spinner data-icon="inline-start" /> : null}
-            Pay with card
-          </Button>
-        </div>
+        {/* what you're paying for, and how long it's yours; stays in view while filling names */}
+        <aside className="flex flex-col gap-5 rounded-xl border bg-card p-5 lg:sticky lg:top-6">
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="text-sm text-muted-foreground">Seats held for</span>
+            <span role="timer" aria-live="off" className={urgent ? "text-2xl text-destructive tabular" : "text-2xl tabular"}>
+              {mmss(left)}
+            </span>
+          </div>
+          <Separator />
+          <ul className="flex flex-col gap-1 text-sm">
+            {order.passengers.map((p) => (
+              <li key={`${p.coachCode}-${p.seatNumber}`} className="tabular">
+                Seat {p.coachCode}-{p.seatNumber}
+              </li>
+            ))}
+          </ul>
+          <div className="flex flex-col gap-1">
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm">Total</span>
+              <span className="text-xl tabular">{taka(order.totalAmount)}</span>
+            </div>
+            <span className="text-xs text-muted-foreground">5% VAT included</span>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Button type="submit" size="lg" disabled={!!busy}>
+              {busy === "pay" ? <Spinner data-icon="inline-start" /> : null}
+              Pay with card
+            </Button>
+            <Button type="button" variant="ghost" disabled={!!busy} onClick={release}>
+              {busy === "release" ? <Spinner data-icon="inline-start" /> : null}
+              Release seats
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            You'll pay on Stripe's secure page. Paying extends your hold to 30 minutes.
+          </p>
+        </aside>
       </div>
-      <p className="text-xs text-muted-foreground">
-        You'll pay on Stripe's secure page. Paying extends your hold to 30 minutes.
-      </p>
     </form>
   );
 }
