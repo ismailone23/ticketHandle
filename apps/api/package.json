@@ -6,7 +6,9 @@
     "start": "bun run src/index.ts",
     "check-types": "tsc --noEmit",
     "dev": "bun --env-file=../../.env --hot src/index.ts",
-    "check:infra": "bun --env-file=../../.env src/scripts/check.ts"
+    "check:infra": "bun --env-file=../../.env src/scripts/check.ts",
+    "test": "bun --env-file=../../.env test",
+    "test:hold-race": "bun --env-file=../../.env src/scripts/hold-race.ts"
   },
   "dependencies": {
     "@acme/auth": "workspace:*",
@@ -15,6 +17,7 @@
     "@hono/zod-validator": "^0.9.1",
     "drizzle-orm": "1.0.0-rc.5",
     "hono": "^4.13.16",
+    "stripe": "^23.2.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

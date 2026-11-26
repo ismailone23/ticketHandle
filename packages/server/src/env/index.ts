@@ -13,6 +13,9 @@ const schema = z.object({
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default("Tickets <onboarding@resend.dev>"),
   PORT: z.coerce.number().default(3000),
+  // test-mode keys from dashboard.stripe.com; payments answer 503 until set
+  STRIPE_SECRET_KEY: z.string().startsWith("sk_").optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
 });
 
 const parsed = schema.safeParse(process.env);
