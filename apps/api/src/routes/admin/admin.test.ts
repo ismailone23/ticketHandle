@@ -2,7 +2,7 @@ import { db } from "@acme/db/db";
 import { order, train as trainTable, trip, tripSeat } from "@acme/db/db/schema";
 import { afterAll, describe, expect, test } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
-import { HOUR, app, buyPaid, call, cleanup, createTrip, createUser, dhakaAt } from "../../test/fixture";
+import { HOUR, app, buyPaid, call, cleanup, createTrip, createUser, dhakaAt, hold, refunds } from "../../test/fixture";
 
 afterAll(cleanup);
 
@@ -98,6 +98,12 @@ describe("admin routes", () => {
       expect(t.body.data.seats).toHaveLength(15);
       expect(t.body.data.seats.filter((s: { seatType: string }) => s.seatType === "ac_s")).toHaveLength(5);
 
+      // no class given: every class, in coach running order (KA before KHA)
+      const all = await call(null, "GET", `/trips/${t.body.data.id}/seats`);
+      expect(all.body.data).toHaveLength(15);
+      expect([...new Set(all.body.data.map((x: { coachCode: string }) => x.coachCode))]).toEqual(["KA", "KHA"]);
+      expect((await call(null, "GET", `/trips/${t.body.data.id}/seats?seatType=ac_s`)).body.data).toHaveLength(5);
+
       const list = await admin("GET", `/trips?trainId=${trainId}`);
       expect(list.body.data[0]).toMatchObject({ id: t.body.data.id, seats: 15, booked: 0, held: 0 });
     } finally {
@@ -143,3 +149,81 @@ describe("stations", () => {
   });
 });
 
+
+describe("delete train, change fares", () => {
+  const newTrain = async (coaches: object[]) => {
+    const number = 91_000 + Math.floor(Math.random() * 8_999);
+    const r = await admin("POST", "/new-train", { ...train, number, fromStation: `fare-${number}-A`, coach: coaches });
+    expect(r.status).toBe(201);
+    return r.body.data.id as string;
+  };
+  const wipe = async (trainId: string) => {
+    const trips = db.select({ id: trip.id }).from(trip).where(eq(trip.trainId, trainId));
+    await db.delete(tripSeat).where(inArray(tripSeat.tripId, trips));
+    await db.delete(order).where(inArray(order.tripId, trips));
+    await db.delete(trip).where(eq(trip.trainId, trainId));
+    await db.delete(trainTable).where(eq(trainTable.id, trainId));
+  };
+
+  test("a train without trips can be deleted; one with trips can't", async () => {
+    const id = await newTrain([coach]);
+    expect((await admin("DELETE", `/trains/${id}`)).status).toBe(200);
+    expect((await db.select().from(trainTable).where(eq(trainTable.id, id))).length).toBe(0);
+    expect((await admin("DELETE", `/trains/${id}`)).status).toBe(404);
+
+    const t = await createTrip(); // fixture train with a trip
+    const r = await admin("DELETE", `/trains/${t.trainId}`);
+    expect(r.status).toBe(409);
+    expect(r.body.error).toContain("1 trip");
+  });
+
+  test("new fare reaches the coach and unsold upcoming seats; held seats keep their price", async () => {
+    const id = await newTrain([coach, { ...coach, code: "KHA", position: 2, seatType: "ac_s", price: 900 }]);
+    try {
+      const when = dhakaAt(72 * HOUR);
+      const t = await admin("POST", "/add-trip", {
+        trainId: id, journeyDate: when.journeyDate, salesOpenAt: new Date().toISOString(),
+        departureTime: "07:00:00", arrivalTime: "12:00:00", arrivalDayOffset: 0,
+      });
+      const tripId = t.body.data.id as string;
+      await hold(await createUser(), tripId, [1]); // KA-1 held at the old fare
+
+      const r = await admin("PUT", `/trains/${id}/fares`, { fares: [{ code: "KA", price: 600 }] });
+      expect(r.status).toBe(200);
+      expect(r.body.data).toEqual({ coaches: 1, seatsRepriced: 9 });
+
+      const seats = await db.select().from(tripSeat).where(eq(tripSeat.tripId, tripId));
+      const ka = (n: number) => seats.find((x) => x.coachCode === "KA" && x.seatNumber === n)!.price;
+      expect(ka(1)).toBe(100); // held: unchanged
+      expect(ka(2)).toBe(600);
+      expect(seats.filter((x) => x.coachCode === "KHA").every((x) => x.price === 900)).toBe(true);
+      expect((await admin("PUT", `/trains/${id}/fares`, { fares: [{ code: "ZZ", price: 1 }] })).status).toBe(404);
+    } finally {
+      await wipe(id);
+    }
+  });
+});
+
+describe("refunds", () => {
+  test("a cancelled booking shows up, is paid back through Stripe once, then is marked refunded", async () => {
+    const t = await createTrip({ departIn: 50 * HOUR });
+    const u = await createUser();
+    const { orderId, paymentId } = await buyPaid(u, t.id, [1]);
+    const cancel = await call(u, "POST", `/cancel/${orderId}`);
+    const owed = cancel.body.data.refundAmount as number;
+    expect(owed).toBeGreaterThan(0);
+
+    const queue = await admin("GET", "/refunds");
+    expect(queue.body.data.find((r: { orderId: string }) => r.orderId === orderId)).toMatchObject({ status: "cancelled", refundAmount: owed });
+    expect((await as("buyer")("POST", `/refunds/${orderId}`)).status).toBe(403);
+
+    const before = refunds.length;
+    const r = await admin("POST", `/refunds/${orderId}`);
+    expect(r.status).toBe(200);
+    expect(refunds.slice(before)).toEqual([{ payment_intent: `pi_${paymentId}`, amount: owed }]);
+    expect((await db.select().from(order).where(eq(order.id, orderId)))[0]!.status).toBe("refunded");
+
+    expect((await admin("POST", `/refunds/${orderId}`)).status).toBe(409); // never twice
+    expect(refunds.length).toBe(before + 1);
+  });
+});

@@ -63,6 +63,14 @@ export const insertTrainSchema = trainBase
     { path: ["coach"], message: "Duplicate coach position" },
   );
 
+// new fares for some of a train's coaches, by coach code
+export const faresSchema = z.object({
+  fares: z
+    .array(coachSchema.pick({ code: true, price: true }))
+    .min(1)
+    .refine((f) => new Set(f.map((x) => x.code)).size === f.length, "Duplicate coach code"),
+});
+
 export const updateTrainSchema = trainBase
   .partial()
   .refine((t) => Object.keys(t).length > 0, { message: "No fields to update" })

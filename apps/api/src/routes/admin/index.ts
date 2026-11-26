@@ -8,6 +8,7 @@ import { asc } from "drizzle-orm";
 import { z } from "zod";
 import { trainRoute } from "./train";
 import { tripRoute } from "./trip";
+import { refundRoute } from "./refund";
 import { expireHolds } from "../../lib/cleanup";
 
 export const adminRoute = new Hono<AppEnv>();
@@ -39,3 +40,4 @@ adminRoute.post("/cleanup/expired-holds", async (c) =>
 );
 adminRoute.route("/", trainRoute);
 adminRoute.route("/", tripRoute);
+adminRoute.route("/", refundRoute);

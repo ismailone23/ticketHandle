@@ -107,12 +107,14 @@ ticketRoute.get(
   },
 );
 // public seat info only (no orderId)
-const seatMap = (tripId: string, type: (typeof seatType.enumValues)[number]) =>
+// one class, or every class when type is omitted (the seat page switches classes locally)
+const seatMap = (tripId: string, type?: (typeof seatType.enumValues)[number]) =>
   db
     .select({
       coachCode: tripSeat.coachCode,
       seatNumber: tripSeat.seatNumber,
       seatType: tripSeat.seatType,
+      coachPosition: tripSeat.coachPosition,
       price: tripSeat.price,
       status: sql<SeatStatus>`case
         when ${isFree} then 'available'
@@ -122,14 +124,14 @@ const seatMap = (tripId: string, type: (typeof seatType.enumValues)[number]) =>
         when not ${isFree} and ${tripSeat.status} = 'reserved' then ${tripSeat.reservedUntil} end`,
     })
     .from(tripSeat)
-    .where(and(eq(tripSeat.tripId, tripId), eq(tripSeat.seatType, type)))
-    .orderBy(asc(tripSeat.coachCode), asc(tripSeat.seatNumber));
+    .where(and(eq(tripSeat.tripId, tripId), type ? eq(tripSeat.seatType, type) : undefined))
+    .orderBy(asc(tripSeat.coachPosition), asc(tripSeat.seatNumber));
 
 const seatMapParams = [
   zValidator("param", z.object({ tripId: z.uuid() })),
   zValidator(
     "query",
-    z.object({ seatType: z.enum(seatType.enumValues).default("s_chair") }),
+    z.object({ seatType: z.enum(seatType.enumValues).optional() }),
   ),
 ] as const;
 
@@ -137,7 +139,7 @@ const seatMapParams = [
 ticketRoute.get("/trips/:tripId/seats", ...seatMapParams, async (c) => {
   const { tripId } = c.req.valid("param");
   const { seatType: type } = c.req.valid("query");
-  const seats = await cached(`seats:${tripId}:${type}`, 2, () =>
+  const seats = await cached(`seats:${tripId}:${type ?? "all"}`, 2, () =>
     seatMap(tripId, type),
   );
   return c.json({ data: seats });
@@ -159,7 +161,7 @@ ticketRoute.get("/trips/:tripId/seats/stream", ...seatMapParams, (c) => {
       stream.writeSSE({ event: "seats", data: JSON.stringify(seats) });
 
     const stop = await watchSeats(tripId, (seats) => {
-      const mine = seats.filter((s) => s.seatType === type);
+      const mine = type ? seats.filter((s) => s.seatType === type) : seats;
       if (!mine.length) return;
       if (pending) pending.push(mine);
       else void send(mine);

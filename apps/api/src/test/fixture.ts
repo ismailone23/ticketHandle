@@ -18,18 +18,25 @@ import { Hono } from "hono";
 import Stripe from "stripe";
 
 // fake Stripe: sessions live in this map, nothing leaves the machine
-export const sessions = new Map<string, { id: string; status: string; url: string; expires_at: number }>();
+export const sessions = new Map<string, { id: string; status: string; url: string; expires_at: number; payment_intent: string }>();
+export const refunds: { payment_intent: string; amount: number }[] = [];
 mock.module("../lib/stripe", () => ({
   stripe: {
     checkout: {
       sessions: {
         create: async (params: { expires_at: number }, opts: { idempotencyKey: string }) => {
-          const s = { id: `cs_test_${opts.idempotencyKey}`, status: "open", url: `https://checkout.test/${opts.idempotencyKey}`, expires_at: params.expires_at };
+          const s = { id: `cs_test_${opts.idempotencyKey}`, status: "open", url: `https://checkout.test/${opts.idempotencyKey}`, expires_at: params.expires_at, payment_intent: `pi_${opts.idempotencyKey}` };
           sessions.set(s.id, s);
           return s;
         },
         retrieve: async (id: string) => sessions.get(id),
         expire: async (id: string) => Object.assign(sessions.get(id)!, { status: "expired" }),
+      },
+    },
+    refunds: {
+      create: async (params: { payment_intent: string; amount: number }) => {
+        refunds.push(params);
+        return { id: `re_${refunds.length}` };
       },
     },
   },
