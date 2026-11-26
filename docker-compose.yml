@@ -6,6 +6,8 @@ services:
       POSTGRES_USER: tickets
       POSTGRES_PASSWORD: tickets
       POSTGRES_DB: tickets
+    # 8 API workers x 20 pool connections = 160; the default 100 fails under load
+    command: postgres -c max_connections=300
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
@@ -15,6 +17,15 @@ services:
     image: redis:7
     ports:
       - "127.0.0.1:6380:6379"
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./load/nginx.conf:/etc/nginx/nginx.conf:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   pgdata:
