@@ -1,10 +1,12 @@
 import { db } from "@acme/db/db";
-import { order, ticket, tripSeat } from "@acme/db/db/schema";
+import { order, payment, trip, ticket, tripSeat } from "@acme/db/db/schema";
 import { afterAll, describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import {
   HOUR,
   buyPaid,
+  dhakaAt,
+  sessions,
   call,
   cleanup,
   createTrip,
@@ -69,6 +71,30 @@ describe("hold", () => {
     const later = await createTrip({ salesOpenAt: new Date(Date.now() + HOUR) });
     expect((await hold(a, later.id, [1])).status).toBe(403);
   });
+
+  test("rejects departed trains and out-of-range input", async () => {
+    const u = await createUser();
+    const gone = await createTrip({ departIn: -HOUR });
+    expect((await hold(u, gone.id, [1])).status).toBe(409);
+
+    const t = await createTrip();
+    expect((await hold(u, t.id, [2 ** 31])).status).toBe(400); // was a DB error / 500
+    const long = "A".repeat(101);
+    expect((await call(u, "GET", `/search?journeyDate=${t.journeyDate}&fromStation=${long}&toStation=B`)).status).toBe(400);
+  });
+
+  test("hold → release loops are rate limited", async () => {
+    const t = await createTrip();
+    const u = await createUser();
+    const codes: number[] = [];
+    for (let i = 0; i < 11; i++) {
+      const r = await hold(u, t.id, [1]);
+      codes.push(r.status);
+      if (r.status === 201) await call(u, "DELETE", `/orders/${r.body.data.order.id}/hold`);
+    }
+    expect(codes.slice(0, 10).every((s) => s === 201)).toBe(true);
+    expect(codes[10]).toBe(429);
+  });
 });
 
 describe("passengers, pay, release", () => {
@@ -100,6 +126,22 @@ describe("passengers, pay, release", () => {
     // hold stretched to cover Stripe's 30 min minimum checkout window
     const left = (await orderRow(id)).expiresAt.getTime() - Date.now();
     expect(left).toBeGreaterThan(31 * 60_000);
+  });
+
+  test("re-paying after a lapsed checkout doesn't extend the hold again", async () => {
+    const t = await createTrip();
+    const u = await createUser();
+    const id = (await hold(u, t.id, [1])).body.data.order.id;
+    await nameAll(u, id, [1]);
+    await call(u, "POST", `/orders/${id}/pay`); // first payment: hold extended to 32 min
+
+    // checkout lapsed in the last minutes of the hold
+    for (const s of sessions.values()) s.status = "expired";
+    await db.update(order).set({ expiresAt: new Date(Date.now() + 2 * 60_000) }).where(eq(order.id, id));
+    expect((await call(u, "POST", `/orders/${id}/pay`)).status).toBe(409); // marks it failed
+    expect((await call(u, "POST", `/orders/${id}/pay`)).status).toBe(409); // won't start another
+    expect((await orderRow(id)).expiresAt.getTime() - Date.now()).toBeLessThan(3 * 60_000);
+    expect(await db.select().from(payment).where(eq(payment.orderId, id))).toHaveLength(1);
   });
 
   test("expired hold can't be changed", async () => {
@@ -159,15 +201,17 @@ describe("cancel", () => {
     const { orderId } = await buyPaid(u, t.id, [1]);
     expect((await call(other, "POST", `/cancel/${orderId}`)).status).toBe(404);
 
-    const gone = await createTrip({ departIn: -HOUR });
-    const late = await buyPaid(u, gone.id, [1]);
+    // bought in time, then the train left
+    const soon = await createTrip({ departIn: 5 * 60_000 });
+    const late = await buyPaid(u, soon.id, [1]);
+    await db.update(trip).set(dhakaAt(-HOUR)).where(eq(trip.id, soon.id));
     expect((await call(u, "POST", `/cancel/${late.orderId}`)).status).toBe(409);
   });
 });
 
 describe("scan", () => {
   // today's trip in Dhaka; scan checks the date, not the departure time
-  const todayTrip = () => createTrip({ departIn: 0 });
+  const todayTrip = () => createTrip({ departIn: 5 * 60_000 });
 
   test("buyers can't scan", async () => {
     const u = await createUser();

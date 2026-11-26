@@ -4,6 +4,7 @@ import {
   order,
   payment,
   ticket,
+  train,
   trip,
   tripSeat,
   seatType,
@@ -14,13 +15,10 @@ import { and, asc, count, eq, inArray, lt, ne, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
-import { cached, getTrainsVersion } from "@acme/db/redis";
+import { cached, getTrainsVersion, redis } from "@acme/db/redis";
 import { getAvailableTrain } from "@acme/server/services";
 import { requirePermission } from "../../middleware/guard";
-import {
-  holdSeatsSchema,
-  passengersSchema,
-} from "../../types";
+import { holdSeatsSchema, passengersSchema } from "../../types";
 import { stripe } from "../../lib/stripe";
 import { env } from "@acme/server/env";
 import { log } from "@acme/server/log";
@@ -56,8 +54,8 @@ ticketRoute.get(
     "query",
     z.object({
       journeyDate: z.iso.date(),
-      fromStation: z.string(),
-      toStation: z.string(),
+      fromStation: z.string().trim().min(1).max(100),
+      toStation: z.string().trim().min(1).max(100),
     }),
   ),
   async (c) => {
@@ -187,6 +185,20 @@ ticketRoute.get("/trips/:tripId/seats/stream", ...seatMapParams, (c) => {
 
 export const vat = 0.05;
 const MAX_TICKETS = 4; // per user per trip
+const HOLDS_PER_WINDOW = 10;
+const HOLD_WINDOW_SEC = 600;
+
+// fixed window counter; Redis down → allow, holds still work
+const tooManyHolds = async (userId: string) => {
+  try {
+    const key = `holds:${userId}`;
+    const n = await redis.incr(key);
+    if (n === 1) await redis.expire(key, HOLD_WINDOW_SEC);
+    return n > HOLDS_PER_WINDOW;
+  } catch {
+    return false;
+  }
+};
 
 ticketRoute.post("/hold", zValidator("json", holdSeatsSchema), async (c) => {
   const { coachCode, seatNumbers, seatType, tripId } = c.req.valid("json");
@@ -204,6 +216,10 @@ ticketRoute.post("/hold", zValidator("json", holdSeatsSchema), async (c) => {
   const [existing] = await findExisting();
   if (existing) return c.json({ data: { order: existing } });
 
+  // stops hold → release loops that keep seats off sale
+  if (await tooManyHolds(user.id))
+    return c.json({ error: "Too many holds, try again in a few minutes" }, 429);
+
   // throw = rollback
   const fail = (status: 403 | 404 | 409, message: string): never => {
     throw new HTTPException(status, { message });
@@ -219,7 +235,12 @@ ticketRoute.post("/hold", zValidator("json", holdSeatsSchema), async (c) => {
         .for("update");
 
       const [t] = await tx
-        .select({ status: trip.status, salesOpenAt: trip.salesOpenAt })
+        .select({
+          status: trip.status,
+          salesOpenAt: trip.salesOpenAt,
+          journeyDate: trip.journeyDate,
+          departureTime: trip.departureTime,
+        })
         .from(trip)
         .where(eq(trip.id, tripId))
         .for("share"); // blocks a concurrent cancel until we commit
@@ -227,6 +248,8 @@ ticketRoute.post("/hold", zValidator("json", holdSeatsSchema), async (c) => {
       if (t.status !== "scheduled") return fail(409, `Trip is ${t.status}`);
       if (t.salesOpenAt > new Date())
         return fail(403, "Ticket sales are not open yet");
+      if (departureAt(t.journeyDate, t.departureTime) <= new Date())
+        return fail(409, "This train has already left");
 
       // seats this user already holds or owns on this trip
       const [held] = await tx
@@ -419,7 +442,16 @@ ticketRoute.post("/orders/:id/pay", orderIdParam, async (c) => {
       .where(and(eq(payment.orderId, id), eq(payment.status, "pending")));
     if (open) return { payment: open, order: held.order, extended: [] };
 
-    const expiresAt = new Date(Date.now() + PAY_WINDOW_MS);
+    // only the first payment extends the hold; otherwise re-paying holds seats forever
+    const [earlier] = await tx
+      .select({ id: payment.id })
+      .from(payment)
+      .where(eq(payment.orderId, id))
+      .limit(1);
+    if (earlier && held.order.expiresAt.getTime() - Date.now() < PAY_WINDOW_MS - 60_000)
+      return { error: "Your hold is ending, please hold the seats again", status: 409 } as const;
+
+    const expiresAt = earlier ? held.order.expiresAt : new Date(Date.now() + PAY_WINDOW_MS);
     const [o] = await tx
       .update(order)
       .set({ expiresAt })
@@ -516,8 +548,16 @@ ticketRoute.get("/orders/:id", orderIdParam, async (c) => {
       passengers: order.passengers,
       ticketCode: ticket.code,
       ticketStatus: ticket.status,
+      journeyDate: trip.journeyDate,
+      departureTime: trip.departureTime,
+      trainName: train.name,
+      trainNumber: train.number,
+      fromStation: train.fromStation,
+      toStation: train.toStation,
     })
     .from(order)
+    .innerJoin(trip, eq(trip.id, order.tripId))
+    .innerJoin(train, eq(train.id, trip.trainId))
     .leftJoin(ticket, eq(ticket.orderId, order.id))
     .where(and(eq(order.id, id), eq(order.userId, user.id)));
   if (!row) return c.json({ error: "Order not found" }, 404);

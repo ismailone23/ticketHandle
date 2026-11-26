@@ -4,12 +4,9 @@ import * as z from "zod";
 export const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   cursor: z.string().optional(),
-  from: z.string().trim().min(1).optional(),
-  to: z.string().trim().min(1).optional(),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
+  from: z.string().trim().min(1).max(100).optional(),
+  to: z.string().trim().min(1).max(100).optional(),
+  date: z.iso.date().optional(), // a regex let "2026-13-45" through to a broken query
   seatType: z.enum(seatType.enumValues).optional(),
   search: z
     .string()
@@ -19,6 +16,12 @@ export const querySchema = z.object({
     .transform((s) => s.toLowerCase())
     .optional(),
 });
+// bounds well inside Postgres integer range, so bad input is a 400, not a DB error
+const MAX_SEAT = 1000;
+export const MAX_TRAIN_NUMBER = 99_999;
+const MAX_POSITION = 100;
+const MAX_PRICE = 100_000_000; // ৳1,000,000 in poisha
+
 // "ka", " KA" -> "KA" so the unique index and duplicate checks agree
 const coachCode = z
   .string()
@@ -28,17 +31,17 @@ const coachCode = z
 
 export const coachSchema = z.object({
   code: coachCode,
-  position: z.number().int().positive(),
+  position: z.number().int().positive().max(MAX_POSITION),
   seatType: z.enum(seatType.enumValues),
-  seatCount: z.number().int().positive(),
-  price: z.number().int().nonnegative(),
+  seatCount: z.number().int().positive().max(MAX_SEAT),
+  price: z.number().int().nonnegative().max(MAX_PRICE),
 });
 
 export const trainBase = z.object({
-  number: z.number().int().positive(),
-  name: z.string().trim().min(1),
-  fromStation: z.string().trim().min(1),
-  toStation: z.string().trim().min(1),
+  number: z.number().int().positive().max(MAX_TRAIN_NUMBER),
+  name: z.string().trim().min(1).max(100),
+  fromStation: z.string().trim().min(1).max(100),
+  toStation: z.string().trim().min(1).max(100),
   offDay: z.enum(offDay.enumValues).nullable(),
 });
 
@@ -82,17 +85,18 @@ export const tripBase = z.object({
 
 export const tripSeatBase = z.object({
   coachCode,
-  coachPosition: z.number().int().positive(),
-  seatNumber: z.number().int().positive(),
+  coachPosition: z.number().int().positive().max(MAX_POSITION),
+  seatNumber: z.number().int().positive().max(MAX_SEAT),
   seatType: z.enum(seatType.enumValues),
-  price: z.number().int().nonnegative(),
+  price: z.number().int().nonnegative().max(MAX_PRICE),
 });
 
 export const insertTripSchema = tripBase
-  .extend({ seats: z.array(tripSeatBase).min(1) })
+  // omit seats to copy them from the train's coaches
+  .extend({ seats: z.array(tripSeatBase).min(1).optional() })
   .superRefine((t, ctx) => {
     const seen = new Set<string>();
-    t.seats.forEach((s, i) => {
+    t.seats?.forEach((s, i) => {
       const key = `${s.coachCode}-${s.seatNumber}`;
       if (seen.has(key))
         ctx.addIssue({
@@ -137,7 +141,7 @@ export const holdSeatsSchema = z.object({
   seatType: z.enum(seatType.enumValues).default("s_chair"),
   coachCode,
   seatNumbers: z
-    .array(z.number().int().min(1))
+    .array(z.number().int().min(1).max(MAX_SEAT))
     .min(1)
     .max(4)
     .refine((n) => new Set(n).size === n.length, "Duplicate seat number"),
@@ -149,7 +153,7 @@ export const passengersSchema = z.object({
     .array(
       z.object({
         coachCode,
-        seatNumber: z.number().int().min(1),
+        seatNumber: z.number().int().min(1).max(MAX_SEAT),
         name: z.string().trim().min(1).max(100),
         email: z.email().optional(),
       }),
@@ -157,4 +161,3 @@ export const passengersSchema = z.object({
     .min(1)
     .max(4),
 });
-

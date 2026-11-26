@@ -93,7 +93,7 @@ describe("stripe webhook", () => {
   });
 
   test("full flow through buyPaid gives a scannable ticket", async () => {
-    const t = await createTrip({ departIn: 0 });
+    const t = await createTrip({ departIn: 5 * 60_000 });
     const [u, checker] = [await createUser(), await createUser()];
     const { code } = await buyPaid(u, t.id, [3]);
     const r = await call(checker, "POST", `/check/${code}`, undefined, { "x-test-role": "organizer" });
