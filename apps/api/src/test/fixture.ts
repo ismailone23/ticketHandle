@@ -10,6 +10,7 @@ import {
   tripSeat,
   user,
 } from "@acme/db/db/schema";
+import { invalidateTrains } from "@acme/db/redis";
 import { env } from "@acme/server/env";
 import { mock } from "bun:test";
 import { eq, inArray } from "drizzle-orm";
@@ -136,6 +137,7 @@ export const createTrip = async (
     })
     .returning();
   created.trains.push(t!.id);
+  await invalidateTrains(); // like the admin route, so cached search/station lists see it
   const [tr] = await db
     .insert(trip)
     .values({
@@ -228,4 +230,5 @@ export const cleanup = async () => {
   }
   if (trains.length) await db.delete(train).where(inArray(train.id, trains));
   if (users.length) await db.delete(user).where(inArray(user.id, users));
+  await invalidateTrains(); // drop cached lists that still name the deleted trains
 };

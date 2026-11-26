@@ -34,6 +34,7 @@ describe("admin routes", () => {
       ["POST", "/new-train", { ...train, number: 9001, coach: [{ ...coach, price: 2 ** 31 }] }, 400],
       ["PUT", "/update-train/not-a-uuid", { name: "Y" }, 400],
       ["GET", "/trains/number/99999999999", undefined, 400],
+      ["GET", "/trains/number/2000000000", undefined, 404], // above the create limit, still looked up
       ["GET", "/all-trains?date=2026-13-45", undefined, 400],
       ["GET", `/all-trains?from=${"A".repeat(101)}`, undefined, 400],
       ["PUT", `/update-trip/${t.id}`, { attach: [{ ...coach, code: "ZZ", position: 9, seatCount: 20_000 }] }, 400],
@@ -129,3 +130,16 @@ describe("admin routes", () => {
     expect((await call(u, "GET", `/orders/${orderId}`)).body.data.ticketStatus).toBe("cancelled");
   });
 });
+
+describe("stations", () => {
+  test("public list of every from/to station, refreshed when trains change", async () => {
+    const { journeyRoute } = await import("../journey");
+    const t = await createTrip();
+    const r = await journeyRoute.request("/ticket/stations"); // no session
+    expect(r.status).toBe(200);
+    const { data } = (await r.json()) as { data: string[] };
+    expect(data).toContain(t.fromStation);
+    expect(data).toContain(t.toStation);
+  });
+});
+

@@ -15,7 +15,6 @@ import * as z from "zod";
 import { zValidator } from "@hono/zod-validator";
 import {
   insertTrainSchema,
-  MAX_TRAIN_NUMBER,
   querySchema,
   updateTrainSchema,
 } from "../../types";
@@ -39,7 +38,8 @@ trainRoute.get("/all-trains", zValidator("query", querySchema), async (c) => {
 
 trainRoute.get("/trains/number/:number", async (c) => {
   const number = Number(c.req.param("number"));
-  if (!Number.isInteger(number) || number < 1 || number > MAX_TRAIN_NUMBER)
+  // read any stored train (older rows may exceed the create limit); only stay inside Postgres int
+  if (!Number.isInteger(number) || number < 1 || number > 2_147_483_647)
     return c.json({ error: "Invalid number" }, 400);
 
   const data = await cached(`train:number:${number}`, 300, () =>
