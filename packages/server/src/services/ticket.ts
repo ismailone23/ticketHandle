@@ -1,6 +1,6 @@
 import { db } from "@acme/db/db";
 import { offDay, train, trip } from "@acme/db/db/schema";
-import { and, eq, inArray, isNull, ne, not, or } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, not, or, sql } from "drizzle-orm";
 
 export const getAvailableTrain = async ({
   fromStation,
@@ -30,6 +30,8 @@ export const getAvailableTrain = async ({
       and(
         eq(trip.journeyDate, journeyDate),
         eq(trip.status, "scheduled"),
+        // not departed yet (Dhaka time)
+        sql`(${trip.journeyDate} + ${trip.departureTime}) at time zone 'Asia/Dhaka' > now()`,
         inArray(
           trip.trainId,
           availableTrain.map((t) => t.id),
