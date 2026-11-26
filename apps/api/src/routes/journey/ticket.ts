@@ -11,7 +11,7 @@ import {
   user as userTable,
 } from "@acme/db/db/schema";
 import { zValidator } from "@hono/zod-validator";
-import { and, asc, count, eq, inArray, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, lt, ne, or, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
 import { z } from "zod";
@@ -532,14 +532,8 @@ ticketRoute.post("/orders/:id/pay", orderIdParam, async (c) => {
   }
 });
 
-// order + ticket for the return page; poll it until status is "paid"
-ticketRoute.get("/orders/:id", orderIdParam, async (c) => {
-  const { id } = c.req.valid("param");
-  const user = c.get("user");
-  if (!user) return c.json({ error: "Unauthorized" }, 401);
-
-  const [row] = await db
-    .select({
+// what the user sees of an order, in the list and on its own page
+const orderView = {
       id: order.id,
       status: order.status,
       totalAmount: order.totalAmount,
@@ -554,12 +548,33 @@ ticketRoute.get("/orders/:id", orderIdParam, async (c) => {
       trainNumber: train.number,
       fromStation: train.fromStation,
       toStation: train.toStation,
-    })
+};
+const ordersOf = (userId: string) =>
+  db
+    .select(orderView)
     .from(order)
     .innerJoin(trip, eq(trip.id, order.tripId))
     .innerJoin(train, eq(train.id, trip.trainId))
     .leftJoin(ticket, eq(ticket.orderId, order.id))
-    .where(and(eq(order.id, id), eq(order.userId, user.id)));
+    .where(eq(order.userId, userId))
+    .$dynamic();
+
+// "My bookings", newest first
+ticketRoute.get("/orders", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+  // shortcut: latest 50 only, add paging when someone has more
+  const rows = await ordersOf(user.id).orderBy(desc(order.createdAt)).limit(50);
+  return c.json({ data: rows });
+});
+
+// order + ticket for the return page; poll it until status is "paid"
+ticketRoute.get("/orders/:id", orderIdParam, async (c) => {
+  const { id } = c.req.valid("param");
+  const user = c.get("user");
+  if (!user) return c.json({ error: "Unauthorized" }, 401);
+
+  const [row] = await ordersOf(user.id).where(and(eq(order.userId, user.id), eq(order.id, id)));
   if (!row) return c.json({ error: "Order not found" }, 404);
   return c.json({ data: row });
 });

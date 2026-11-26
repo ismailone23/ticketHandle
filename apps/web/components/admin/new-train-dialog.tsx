@@ -1,6 +1,6 @@
 "use client";
 
-import { CopyIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { CopyIcon, PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,10 +28,12 @@ const blank = (i: number): CoachRow => ({ code: CODES[i] ?? "", seatType: "s_cha
 const fromTrain = (t: Train): CoachRow[] =>
   t.coaches.map((c) => ({ code: c.code, seatType: c.seatType, seatCount: String(c.seatCount), taka: String(c.price / 100) }));
 
-export function NewTrainDialog({ onCreated, copyOf }: { onCreated: (number: number) => void; copyOf?: Train }) {
+// editing changes the train's own fields only: trips copied their seats from its coaches, so coaches stay
+export function NewTrainDialog({ onCreated, copyOf, editing }: { onCreated: (number: number) => void; copyOf?: Train; editing?: Train }) {
+  const source = copyOf ?? editing;
   const { request } = useSession();
   const [open, setOpen] = useState(false);
-  const [offDay, setOffDay] = useState(copyOf?.offDay ?? "none");
+  const [offDay, setOffDay] = useState(source?.offDay ?? "none");
   const [coaches, setCoaches] = useState<CoachRow[]>(copyOf ? fromTrain(copyOf) : [blank(0)]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -45,14 +47,19 @@ export function NewTrainDialog({ onCreated, copyOf }: { onCreated: (number: numb
     setPending(true);
     setError(null);
     try {
-      const created = await request<{ number: number }>("/api/admin/new-train", {
+      const fields = {
+        number: Number(f.get("number")),
+        name: String(f.get("name")),
+        fromStation: String(f.get("from")),
+        toStation: String(f.get("to")),
+        offDay: offDay === "none" ? null : offDay,
+      };
+      const created = editing
+        ? await request<{ number: number }>(`/api/admin/update-train/${editing.id}`, { method: "PUT", body: JSON.stringify(fields) })
+        : await request<{ number: number }>("/api/admin/new-train", {
         method: "POST",
         body: JSON.stringify({
-          number: Number(f.get("number")),
-          name: String(f.get("name")),
-          fromStation: String(f.get("from")),
-          toStation: String(f.get("to")),
-          offDay: offDay === "none" ? null : offDay,
+          ...fields,
           coach: coaches.map((c, i) => ({
             code: c.code,
             position: i + 1,
@@ -62,7 +69,7 @@ export function NewTrainDialog({ onCreated, copyOf }: { onCreated: (number: numb
           })),
         }),
       });
-      toast.success(copyOf ? "Copy saved" : "Train added");
+      toast.success(editing ? "Train updated" : copyOf ? "Copy saved" : "Train added");
       setOpen(false);
       setCoaches([blank(0)]);
       onCreated(created.number);
@@ -78,22 +85,24 @@ export function NewTrainDialog({ onCreated, copyOf }: { onCreated: (number: numb
       open={open}
       onOpenChange={(o) => {
         if (o) {
-          setOffDay(copyOf?.offDay ?? "none");
+          setOffDay(source?.offDay ?? "none");
           setCoaches(copyOf ? fromTrain(copyOf) : [blank(0)]);
           setError(null);
         }
         setOpen(o);
       }}
     >
-      <DialogTrigger render={<Button variant={copyOf ? "outline" : "default"} />}>
-        {copyOf ? <CopyIcon data-icon="inline-start" /> : <PlusIcon data-icon="inline-start" />}
-        {copyOf ? "Duplicate" : "New train"}
+      <DialogTrigger render={<Button variant={source ? "outline" : "default"} />}>
+        {editing ? <PencilIcon data-icon="inline-start" /> : copyOf ? <CopyIcon data-icon="inline-start" /> : <PlusIcon data-icon="inline-start" />}
+        {editing ? "Edit" : copyOf ? "Duplicate" : "New train"}
       </DialogTrigger>
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>{copyOf ? `Duplicate ${copyOf.name}` : "New train"}</DialogTitle>
+          <DialogTitle>{editing ? `Edit ${editing.name}` : copyOf ? `Duplicate ${copyOf.name}` : "New train"}</DialogTitle>
           <DialogDescription>
-            {copyOf
+            {editing
+              ? "Coaches stay as they are because trips copied their seats from them. To change coaches, duplicate the train."
+              : copyOf
               ? `Starts from #${copyOf.number}: route, off day and ${copyOf.coaches.length === 1 ? "its coach" : `all ${copyOf.coaches.length} coaches`}. Give it a new number and change what differs.`
               : "Coaches are listed in the order they run, engine first."}
           </DialogDescription>
@@ -103,21 +112,21 @@ export function NewTrainDialog({ onCreated, copyOf }: { onCreated: (number: numb
             <div className="grid gap-4 sm:grid-cols-[8rem_1fr]">
               <Field>
                 <FieldLabel htmlFor="number">Number</FieldLabel>
-                <Input id="number" name="number" type="number" inputMode="numeric" min={1} max={99999} required autoFocus={!!copyOf} />
+                <Input id="number" name="number" type="number" inputMode="numeric" min={1} max={99999} required autoFocus={!!copyOf} defaultValue={editing?.number} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="name">Name</FieldLabel>
-                <Input id="name" name="name" placeholder="Subarna Express" maxLength={100} required defaultValue={copyOf?.name} />
+                <Input id="name" name="name" placeholder="Subarna Express" maxLength={100} required defaultValue={source?.name} />
               </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <Field>
                 <FieldLabel htmlFor="from">From</FieldLabel>
-                <Input id="from" name="from" maxLength={100} required defaultValue={copyOf?.fromStation} />
+                <Input id="from" name="from" maxLength={100} required defaultValue={source?.fromStation} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="to">To</FieldLabel>
-                <Input id="to" name="to" maxLength={100} required defaultValue={copyOf?.toStation} />
+                <Input id="to" name="to" maxLength={100} required defaultValue={source?.toStation} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="offday">Off day</FieldLabel>
@@ -138,6 +147,7 @@ export function NewTrainDialog({ onCreated, copyOf }: { onCreated: (number: numb
               </Field>
             </div>
 
+            {editing ? null : (
             <FieldSet>
               <FieldLegend variant="label">Coaches</FieldLegend>
               <div className="flex flex-col gap-2">
@@ -183,13 +193,14 @@ export function NewTrainDialog({ onCreated, copyOf }: { onCreated: (number: numb
                 Add coach
               </Button>
             </FieldSet>
+            )}
             {error ? <FieldError>{error}</FieldError> : null}
           </FieldGroup>
         </form>
         <DialogFooter>
           <Button type="submit" form="new-train" disabled={pending}>
             {pending ? <Spinner data-icon="inline-start" /> : null}
-            {copyOf ? "Save copy" : "Add train"}
+            {editing ? "Save changes" : copyOf ? "Save copy" : "Add train"}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -241,3 +241,19 @@ describe("scan", () => {
     expect(r.status).toBe(409);
   });
 });
+
+describe("my bookings", () => {
+  test("lists only the user's own orders, newest first, with trip details", async () => {
+    const t = await createTrip();
+    const [u, other] = [await createUser(), await createUser()];
+    const first = (await hold(u, t.id, [1])).body.data.order.id;
+    const second = (await hold(u, t.id, [2])).body.data.order.id;
+    await hold(other, t.id, [3]);
+
+    const r = await call(u, "GET", "/orders");
+    expect(r.status).toBe(200);
+    expect(r.body.data.map((o: { id: string }) => o.id)).toEqual([second, first]);
+    expect(r.body.data[0]).toMatchObject({ status: "pending", trainName: expect.any(String), journeyDate: t.journeyDate });
+    expect((await call(null, "GET", "/orders")).status).toBe(401);
+  });
+});

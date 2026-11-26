@@ -36,6 +36,7 @@ export function TrainDetail({ number }: { number: string }) {
   const [train, setTrain] = useState<Train | null>(null);
   const [trips, setTrips] = useState<AdminTrip[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState(0); // bump to reload after an edit that kept the number
 
   const loadTrips = useCallback(
     (id: string) => request<AdminTrip[]>(`/api/admin/trips?trainId=${id}`).then(setTrips),
@@ -48,7 +49,7 @@ export function TrainDetail({ number }: { number: string }) {
         return loadTrips(t.id);
       })
       .catch((e: ApiError) => setError(e.message));
-  }, [number, request, loadTrips]);
+  }, [number, request, loadTrips, version]);
 
   if (error)
     return (
@@ -75,7 +76,10 @@ export function TrainDetail({ number }: { number: string }) {
           {train.name} <span className="text-base font-normal text-muted-foreground">#{train.number}</span>
         </h1>
         </div>
-        <NewTrainDialog copyOf={train} onCreated={(n) => router.push(`/admin/trains/${n}`)} />
+        <div className="flex gap-2">
+          <NewTrainDialog editing={train} onCreated={(n) => (n === train.number ? setVersion((v) => v + 1) : router.push(`/admin/trains/${n}`))} />
+          <NewTrainDialog copyOf={train} onCreated={(n) => router.push(`/admin/trains/${n}`)} />
+        </div>
       </header>
 
       <section className="flex flex-col gap-3" aria-label="Coaches">
