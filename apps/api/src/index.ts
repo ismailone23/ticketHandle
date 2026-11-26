@@ -36,6 +36,8 @@ if (cluster.isPrimary && workers > 1) {
 } else {
   // Imported here so the primary never opens DB/Redis connections.
   const { default: app } = await import("./app.js");
+  const { startCleanup } = await import("./lib/cleanup.js");
+  startCleanup();
 
   const serve = Bun.serve({
     port: process.env.PORT || 5030,
