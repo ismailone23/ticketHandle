@@ -35,8 +35,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body.data as T;
 }
 
-export const seatStreamUrl = (tripId: string, seatType: string) =>
-  `${BASE}/trips/${tripId}/seats/stream?seatType=${seatType}`;
+export const seatStreamUrl = (tripId: string, seatType?: string) =>
+  `${BASE}/trips/${tripId}/seats/stream${seatType ? `?seatType=${seatType}` : ""}`;
 
 export type SeatType = "s_chair" | "snigdha" | "ac_s" | "ac_c";
 export type SeatStatus = "available" | "in_progress" | "booked";
@@ -44,6 +44,7 @@ export type Seat = {
   coachCode: string;
   seatNumber: number;
   seatType: SeatType;
+  coachPosition: number;
   price: number;
   status: SeatStatus;
   until: string | null;

@@ -19,16 +19,27 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { api, type SeatType } from "@/lib/api";
 import { CLASS_NAMES, longDate, todayInDhaka } from "@/lib/format";
 
-const CLASSES = (Object.keys(CLASS_NAMES) as SeatType[]).map((value) => ({ value, label: CLASS_NAMES[value] }));
+const CLASSES = (Object.keys(CLASS_NAMES) as SeatType[]).map((value) => ({
+  value,
+  label: CLASS_NAMES[value],
+}));
 
 const toIso = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
-export function SearchForm() {
+// compact: one row above the results, so the search stays editable without the hero
+export function SearchForm({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
   const [from, setFrom] = useState(params.get("from") ?? "");
@@ -40,22 +51,41 @@ export function SearchForm() {
   const [open, setOpen] = useState(false);
   const [stations, setStations] = useState<string[]>([]);
   useEffect(() => {
-    api<string[]>("/stations").then(setStations).catch(() => {});
+    api<string[]>("/stations")
+      .then(setStations)
+      .catch(() => {});
   }, []);
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        const q = new URLSearchParams({ from: from.trim(), to: to.trim(), date, class: seatType });
-        router.push(`/?${q}`);
+        const q = new URLSearchParams({
+          from: from.trim(),
+          to: to.trim(),
+          date,
+          class: seatType,
+        });
+        router.push(`/search?${q}`);
       }}
-      className="flex flex-col gap-5 rounded-xl border bg-card p-5"
+      className={
+        compact
+          ? "grid gap-3 rounded-xl border bg-card p-4 lg:grid-cols-[2fr_1.4fr_auto] lg:items-end"
+          : "flex flex-col gap-5 rounded-xl border bg-card p-5"
+      }
     >
       <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-3">
         <Field>
-          <FieldLabel htmlFor="from" className="text-muted-foreground">From station</FieldLabel>
-          <StationPicker id="from" value={from} onChange={setFrom} stations={stations} placeholder="Pick a station" />
+          <FieldLabel htmlFor="from" className="text-muted-foreground">
+            From station
+          </FieldLabel>
+          <StationPicker
+            id="from"
+            value={from}
+            onChange={setFrom}
+            stations={stations}
+            placeholder="Pick a station"
+          />
         </Field>
         <Button
           type="button"
@@ -71,16 +101,36 @@ export function SearchForm() {
           <ArrowLeftRightIcon />
         </Button>
         <Field>
-          <FieldLabel htmlFor="to" className="text-muted-foreground">To station</FieldLabel>
-          <StationPicker id="to" value={to} onChange={setTo} stations={stations.filter((s) => s !== from)} placeholder="Pick a station" />
+          <FieldLabel htmlFor="to" className="text-muted-foreground">
+            To station
+          </FieldLabel>
+          <StationPicker
+            id="to"
+            value={to}
+            onChange={setTo}
+            stations={stations.filter((s) => s !== from)}
+            placeholder="Pick a station"
+          />
         </Field>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Field>
-          <FieldLabel htmlFor="date" className="text-muted-foreground">Journey date</FieldLabel>
+          <FieldLabel htmlFor="date" className="text-muted-foreground">
+            Journey date
+          </FieldLabel>
           <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger render={<Button id="date" type="button" variant="outline" size="lg" className="justify-start bg-transparent text-base tabular md:text-sm" />}>
+            <PopoverTrigger
+              render={
+                <Button
+                  id="date"
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  className="justify-start bg-transparent text-base tabular md:text-sm"
+                />
+              }
+            >
               <CalendarIcon data-icon="inline-start" />
               {longDate(date)}
             </PopoverTrigger>
@@ -98,9 +148,18 @@ export function SearchForm() {
           </Popover>
         </Field>
         <Field>
-          <FieldLabel htmlFor="class" className="text-muted-foreground">Class</FieldLabel>
-          <Select items={CLASSES} value={seatType} onValueChange={(v) => v && setSeatType(v as SeatType)}>
-            <SelectTrigger id="class" className="w-full text-base data-[size=default]:h-9 md:text-sm">
+          <FieldLabel htmlFor="class" className="text-muted-foreground">
+            Class
+          </FieldLabel>
+          <Select
+            items={CLASSES}
+            value={seatType}
+            onValueChange={(v) => v && setSeatType(v as SeatType)}
+          >
+            <SelectTrigger
+              id="class"
+              className="w-full text-base data-[size=default]:h-9 md:text-sm"
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeftIcon, CalendarPlusIcon } from "lucide-react";
+import { ArrowLeftIcon, CalendarPlusIcon, Trash2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { NewTrainDialog } from "./new-train-dialog";
@@ -29,6 +29,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useSession } from "@/components/session-provider";
 import type { AdminTrip, ApiError, Train } from "@/lib/api";
 import { CLASS_NAMES, clock, longDate, serviceDays, taka, todayInDhaka } from "@/lib/format";
+import { nextServiceDate, salesOpenFor } from "@/lib/next-trip";
 
 export function TrainDetail({ number }: { number: string }) {
   const { request } = useSession();
@@ -79,6 +80,7 @@ export function TrainDetail({ number }: { number: string }) {
         <div className="flex gap-2">
           <NewTrainDialog editing={train} onCreated={(n) => (n === train.number ? setVersion((v) => v + 1) : router.push(`/admin/trains/${n}`))} />
           <NewTrainDialog copyOf={train} onCreated={(n) => router.push(`/admin/trains/${n}`)} />
+          <DeleteTrain train={train} onDone={() => router.push("/admin")} />
         </div>
       </header>
 
@@ -97,7 +99,10 @@ export function TrainDetail({ number }: { number: string }) {
       </section>
 
       <section className="flex flex-col gap-3" aria-label="Trips">
-        <h2 className="text-sm font-medium">Trips</h2>
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="text-sm font-medium">Trips</h2>
+          {trips?.length ? <ScheduleNext train={train} last={trips[0]!} onCreated={() => loadTrips(train.id)} /> : null}
+        </div>
         {!trips ? (
           <Skeleton className="h-32" />
         ) : !trips.length ? (
@@ -168,6 +173,7 @@ function NewTripForm({ train, onCreated }: { train: Train; onCreated: () => void
       });
       toast.success(`Trip on ${longDate(String(f.get("date")))} added`);
       form.reset();
+      setSales(now);
       onCreated();
     } catch (err) {
       setError((err as ApiError).message);
@@ -177,6 +183,8 @@ function NewTripForm({ train, onCreated }: { train: Train; onCreated: () => void
   }
 
   const now = new Date(Date.now() + 6 * 3_600_000).toISOString().slice(0, 16); // Dhaka "YYYY-MM-DDTHH:mm"
+  // filled from the journey date (12:00 AM, 10 days before); still editable
+  const [sales, setSales] = useState(now);
   return (
     <Card>
       <CardHeader>
@@ -189,7 +197,7 @@ function NewTripForm({ train, onCreated }: { train: Train; onCreated: () => void
             <div className="grid gap-4 sm:grid-cols-4">
               <Field>
                 <FieldLabel htmlFor="date">Date</FieldLabel>
-                <Input id="date" name="date" type="date" min={todayInDhaka()} required />
+                <Input id="date" name="date" type="date" min={todayInDhaka()} required onChange={(e) => e.target.value && setSales(salesOpenFor(e.target.value).slice(0, 16))} />
               </Field>
               <Field>
                 <FieldLabel htmlFor="dep">Departs</FieldLabel>
@@ -207,7 +215,8 @@ function NewTripForm({ train, onCreated }: { train: Train; onCreated: () => void
             </div>
             <Field className="sm:max-w-xs">
               <FieldLabel htmlFor="sales">Sales open (Dhaka time)</FieldLabel>
-              <Input id="sales" name="sales" type="datetime-local" defaultValue={now} required />
+              <Input id="sales" name="sales" type="datetime-local" value={sales} onChange={(e) => setSales(e.target.value)} required />
+              <FieldDescription>Picking a date sets this to 12:00 AM, 10 days before</FieldDescription>
             </Field>
             {error ? <FieldError>{error}</FieldError> : null}
           </FieldGroup>
@@ -256,5 +265,78 @@ function CancelTrip({ trip, onDone }: { trip: AdminTrip; onDone: () => void }) {
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
+  );
+}
+
+function DeleteTrain({ train, onDone }: { train: Train; onDone: () => void }) {
+  const { request } = useSession();
+  async function remove() {
+    try {
+      await request(`/api/admin/trains/${train.id}`, { method: "DELETE" });
+      toast.success(`${train.name} deleted`);
+      onDone();
+    } catch (e) {
+      toast.error((e as ApiError).message); // e.g. it has trips on record
+    }
+  }
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger render={<Button variant="ghost" />}>
+        <Trash2Icon data-icon="inline-start" />
+        Delete
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete {train.name}?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Only a train that has never had a trip can be deleted; its coaches go with it. A train with trips stays, so its
+            bookings and tickets keep their history.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep train</AlertDialogCancel>
+          <AlertDialogAction variant="destructive" onClick={remove}>
+            Delete train
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+// one click: the latest trip again on the next running day (list is newest first, so last = trips[0])
+function ScheduleNext({ train, last, onCreated }: { train: Train; last: AdminTrip; onCreated: () => void }) {
+  const { request } = useSession();
+  const [busy, setBusy] = useState(false);
+  const date = nextServiceDate(last.journeyDate, train.offDay, todayInDhaka());
+
+  async function schedule() {
+    setBusy(true);
+    try {
+      await request("/api/admin/add-trip", {
+        method: "POST",
+        body: JSON.stringify({
+          trainId: train.id,
+          journeyDate: date,
+          departureTime: last.departureTime,
+          arrivalTime: last.arrivalTime,
+          arrivalDayOffset: last.arrivalDayOffset,
+          salesOpenAt: salesOpenFor(date),
+        }),
+      });
+      toast.success(`Trip on ${longDate(date)} added`);
+      onCreated();
+    } catch (e) {
+      toast.error((e as ApiError).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Button variant="outline" size="sm" disabled={busy} onClick={schedule} title={`Copies the ${longDate(last.journeyDate)} trip`}>
+      {busy ? <Spinner data-icon="inline-start" /> : <CalendarPlusIcon data-icon="inline-start" />}
+      Schedule {longDate(date).replace(/ \d{4}$/, "")}
+    </Button>
   );
 }

@@ -32,6 +32,7 @@
     --color-secondary: var(--secondary);
     --color-primary-foreground: var(--primary-foreground);
     --color-primary: var(--primary);
+    --color-primary-hover: var(--primary-hover);
     --color-popover-foreground: var(--popover-foreground);
     --color-popover: var(--popover);
     --color-card-foreground: var(--card-foreground);
@@ -48,13 +49,15 @@
 }
 
 :root {
-    --background: oklch(0.975 0.008 85);
+    --background: oklch(0.982 0 0);
     --foreground: oklch(0.2 0.01 60);
-    --card: oklch(0.99 0.005 85);
+    --card: oklch(1 0 0);
     --card-foreground: oklch(0.2 0.01 60);
-    --popover: oklch(0.99 0.005 85);
+    --popover: oklch(1 0 0);
     --popover-foreground: oklch(0.2 0.01 60);
-    --primary: oklch(0.42 0.09 155);
+    --primary: oklch(0.45 0.13 152);
+    /* solid, not see-through: hover is a darker green, never green mixed with the page */
+    --primary-hover: oklch(0.38 0.12 152);
     --primary-foreground: oklch(0.98 0.01 150);
     --secondary: oklch(0.935 0.012 85);
     --secondary-foreground: oklch(0.2 0.01 60);
@@ -65,7 +68,7 @@
     --destructive: oklch(0.577 0.245 27.325);
     --border: oklch(0.87 0.015 80);
     --input: oklch(0.85 0.015 80);
-    --ring: oklch(0.42 0.09 155);
+    --ring: oklch(0.45 0.13 152);
     --chart-1: oklch(0.87 0 0);
     --chart-2: oklch(0.556 0 0);
     --chart-3: oklch(0.439 0 0);

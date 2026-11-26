@@ -5,12 +5,13 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Field, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { useSession } from "@/components/session-provider";
 import type { ApiError, SeatType, Train } from "@/lib/api";
+import { setClass, setFare, withFare } from "@/lib/coach-fares";
 import { CLASS_NAMES } from "@/lib/format";
 
 const OFF_DAYS = [
@@ -21,7 +22,7 @@ const CLASSES = (Object.keys(CLASS_NAMES) as SeatType[]).map((value) => ({ value
 // Bangladesh Railway style coach letters, in order
 const CODES = ["KA", "KHA", "GA", "GHA", "UMA", "CHA", "SCHA", "JA", "JHA", "NEO"];
 
-type CoachRow = { code: string; seatType: SeatType; seatCount: string; taka: string };
+type CoachRow = { code: string; seatType: SeatType; seatCount: string; taka: string; custom?: boolean };
 const blank = (i: number): CoachRow => ({ code: CODES[i] ?? "", seatType: "s_chair", seatCount: "60", taka: "" });
 
 // a copy starts from every field of the original except its number, which must be unique
@@ -34,7 +35,7 @@ export function NewTrainDialog({ onCreated, copyOf, editing }: { onCreated: (num
   const { request } = useSession();
   const [open, setOpen] = useState(false);
   const [offDay, setOffDay] = useState(source?.offDay ?? "none");
-  const [coaches, setCoaches] = useState<CoachRow[]>(copyOf ? fromTrain(copyOf) : [blank(0)]);
+  const [coaches, setCoaches] = useState<CoachRow[]>(source ? fromTrain(source) : [blank(0)]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -69,7 +70,24 @@ export function NewTrainDialog({ onCreated, copyOf, editing }: { onCreated: (num
           })),
         }),
       });
-      toast.success(editing ? "Train updated" : copyOf ? "Copy saved" : "Train added");
+      // only fares that changed; the API reprices unsold seats on upcoming trips
+      const changed = editing
+        ? coaches
+            .map((c) => ({ code: c.code, price: Math.round(Number(c.taka) * 100) }))
+            .filter((f) => editing.coaches.find((k) => k.code === f.code)?.price !== f.price)
+        : [];
+      const repriced = changed.length
+        ? await request<{ seatsRepriced: number }>(`/api/admin/trains/${editing!.id}/fares`, { method: "PUT", body: JSON.stringify({ fares: changed }) })
+        : null;
+      toast.success(
+        repriced
+          ? `Train updated. New fares on ${repriced.seatsRepriced} unsold ${repriced.seatsRepriced === 1 ? "seat" : "seats"}.`
+          : editing
+            ? "Train updated"
+            : copyOf
+              ? "Copy saved"
+              : "Train added",
+      );
       setOpen(false);
       setCoaches([blank(0)]);
       onCreated(created.number);
@@ -86,7 +104,7 @@ export function NewTrainDialog({ onCreated, copyOf, editing }: { onCreated: (num
       onOpenChange={(o) => {
         if (o) {
           setOffDay(source?.offDay ?? "none");
-          setCoaches(copyOf ? fromTrain(copyOf) : [blank(0)]);
+          setCoaches(source ? fromTrain(source) : [blank(0)]);
           setError(null);
         }
         setOpen(o);
@@ -101,7 +119,7 @@ export function NewTrainDialog({ onCreated, copyOf, editing }: { onCreated: (num
           <DialogTitle>{editing ? `Edit ${editing.name}` : copyOf ? `Duplicate ${copyOf.name}` : "New train"}</DialogTitle>
           <DialogDescription>
             {editing
-              ? "Coaches stay as they are because trips copied their seats from them. To change coaches, duplicate the train."
+              ? "New fares apply to future trips and to unsold seats on upcoming trips. Seats already held or sold keep their price. To change the coaches themselves, duplicate the train."
               : copyOf
               ? `Starts from #${copyOf.number}: route, off day and ${copyOf.coaches.length === 1 ? "its coach" : `all ${copyOf.coaches.length} coaches`}. Give it a new number and change what differs.`
               : "Coaches are listed in the order they run, engine first."}
@@ -147,19 +165,19 @@ export function NewTrainDialog({ onCreated, copyOf, editing }: { onCreated: (num
               </Field>
             </div>
 
-            {editing ? null : (
             <FieldSet>
               <FieldLegend variant="label">Coaches</FieldLegend>
+              <FieldDescription>Coaches of the same class share a fare. Change one coach’s fare to set it apart.</FieldDescription>
               <div className="flex flex-col gap-2">
                 {coaches.map((c, i) => (
                   <div key={i} className="grid grid-cols-[4.5rem_1fr_4.5rem_6rem_auto] items-end gap-2">
                     <Field>
                       <FieldLabel htmlFor={`code-${i}`} className={i ? "sr-only" : undefined}>Code</FieldLabel>
-                      <Input id={`code-${i}`} value={c.code} onChange={(e) => setCoach(i, { code: e.target.value.toUpperCase() })} maxLength={5} required />
+                      <Input id={`code-${i}`} value={c.code} onChange={(e) => setCoach(i, { code: e.target.value.toUpperCase() })} maxLength={5} required disabled={!!editing} />
                     </Field>
                     <Field>
                       <FieldLabel htmlFor={`class-${i}`} className={i ? "sr-only" : undefined}>Class</FieldLabel>
-                      <Select items={CLASSES} value={c.seatType} onValueChange={(v) => setCoach(i, { seatType: v as SeatType })}>
+                      <Select items={CLASSES} value={c.seatType} disabled={!!editing} onValueChange={(v) => setCoaches((cs) => setClass(cs, i, v as SeatType))}>
                         <SelectTrigger id={`class-${i}`} className="w-full">
                           <SelectValue />
                         </SelectTrigger>
@@ -176,24 +194,27 @@ export function NewTrainDialog({ onCreated, copyOf, editing }: { onCreated: (num
                     </Field>
                     <Field>
                       <FieldLabel htmlFor={`seats-${i}`} className={i ? "sr-only" : undefined}>Seats</FieldLabel>
-                      <Input id={`seats-${i}`} type="number" min={1} max={1000} value={c.seatCount} onChange={(e) => setCoach(i, { seatCount: e.target.value })} required className="tabular" />
+                      <Input id={`seats-${i}`} type="number" min={1} max={1000} value={c.seatCount} onChange={(e) => setCoach(i, { seatCount: e.target.value })} required disabled={!!editing} className="tabular" />
                     </Field>
                     <Field>
                       <FieldLabel htmlFor={`price-${i}`} className={i ? "sr-only" : undefined}>Fare ৳</FieldLabel>
-                      <Input id={`price-${i}`} type="number" min={0} step="0.01" value={c.taka} onChange={(e) => setCoach(i, { taka: e.target.value })} required className="tabular" />
+                      <Input id={`price-${i}`} type="number" min={0} step="0.01" value={c.taka} onChange={(e) => setCoaches((cs) => setFare(cs, i, e.target.value))} required className="tabular" />
                     </Field>
-                    <Button type="button" variant="ghost" size="icon" aria-label={`Remove coach ${c.code || i + 1}`} disabled={coaches.length === 1} onClick={() => setCoaches(coaches.filter((_, j) => j !== i))}>
-                      <Trash2Icon />
-                    </Button>
+                    {editing ? null : (
+                      <Button type="button" variant="ghost" size="icon" aria-label={`Remove coach ${c.code || i + 1}`} disabled={coaches.length === 1} onClick={() => setCoaches(coaches.filter((_, j) => j !== i))}>
+                        <Trash2Icon />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
-              <Button type="button" variant="outline" size="sm" className="self-start" onClick={() => setCoaches([...coaches, blank(coaches.length)])}>
-                <PlusIcon data-icon="inline-start" />
-                Add coach
-              </Button>
+              {editing ? null : (
+                <Button type="button" variant="outline" size="sm" className="self-start" onClick={() => setCoaches([...coaches, withFare(coaches, blank(coaches.length))])}>
+                  <PlusIcon data-icon="inline-start" />
+                  Add coach
+                </Button>
+              )}
             </FieldSet>
-            )}
             {error ? <FieldError>{error}</FieldError> : null}
           </FieldGroup>
         </form>

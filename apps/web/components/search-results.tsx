@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -19,6 +18,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useSession } from "@/components/session-provider";
 import { type ApiError, type SearchResult, type SeatType } from "@/lib/api";
 import { CLASS_NAMES, clock, longDate, taka } from "@/lib/format";
+import { cn } from "@/lib/utils";
+
+const CLASS_ORDER = Object.keys(CLASS_NAMES) as SeatType[];
 
 const minutes = (t: string) => {
   const [h, m] = t.split(":").map(Number) as [number, number];
@@ -95,31 +97,28 @@ export function SearchResults() {
   return (
     <section className="flex flex-col gap-3" aria-label="Trains">
       <p className="text-sm text-muted-foreground">
-        {state.data.length} {state.data.length === 1 ? "train" : "trains"} ·{" "}
-        {from} → {to} · {longDate(date)}
+        {state.data.length} {state.data.length === 1 ? "train" : "trains"}
       </p>
       {state.data.map(({ train, trip, classes }) => {
-        const cls = classes.find((c) => c.seatType === seatType);
-        const q = new URLSearchParams({
-          class: seatType,
-          train: train.name,
-          num: String(train.number),
-          from: train.fromStation,
-          to: train.toStation,
-          date: trip.journeyDate,
-          dep: trip.departureTime,
-        });
+        const ordered = [...classes].sort(
+          (a, b) => Number(b.seatType === seatType) - Number(a.seatType === seatType) || CLASS_ORDER.indexOf(a.seatType) - CLASS_ORDER.indexOf(b.seatType),
+        );
+        const link = (t: SeatType) =>
+          `/trips/${trip.id}?${new URLSearchParams({
+            class: t,
+            train: train.name,
+            num: String(train.number),
+            from: train.fromStation,
+            to: train.toStation,
+            date: trip.journeyDate,
+            dep: trip.departureTime,
+          })}`;
         return (
-          <article
-            key={trip.id}
-            className="flex flex-col rounded-lg border bg-card sm:flex-row"
-          >
-            <div className="flex flex-1 flex-col gap-3 p-4">
+          <article key={trip.id} className="flex flex-col rounded-xl border bg-card">
+            <div className="flex flex-col gap-3 p-5">
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="truncate font-medium">{train.name}</h2>
-                <span className="text-xs text-muted-foreground">
-                  #{train.number}
-                </span>
+                <span className="text-xs text-muted-foreground">#{train.number}</span>
               </div>
               {/* departure and arrival, each under its station, with the journey time between */}
               <div className="grid grid-cols-[auto_1fr_auto] items-start gap-3">
@@ -133,45 +132,36 @@ export function SearchResults() {
                 <div className="flex flex-col items-end">
                   <span className="text-xl tabular">
                     {clock(trip.arrivalTime)}
-                    {trip.arrivalDayOffset ? (
-                      <sup className="ml-0.5 text-xs text-muted-foreground">+{trip.arrivalDayOffset}</sup>
-                    ) : null}
+                    {trip.arrivalDayOffset ? <sup className="ml-0.5 text-xs text-muted-foreground">+{trip.arrivalDayOffset}</sup> : null}
                   </span>
                   <span className="truncate text-sm text-muted-foreground">{train.toStation}</span>
                 </div>
               </div>
             </div>
-        <div className="border-t sm:border-t-0 sm:border-l" aria-hidden />
-            <div className="flex items-center justify-between gap-4 p-4 sm:w-56 sm:flex-col sm:items-stretch sm:justify-center">
-              {cls ? (
-                <>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-xs text-muted-foreground">
-                      {CLASS_NAMES[seatType]} from
-                    </span>
-                    <span className="text-lg tabular">
-                      {taka(cls.fromPrice)}
-                    </span>
-                    <Badge variant={cls.available ? "secondary" : "outline"}>
-                      {cls.available
-                        ? `${cls.available} seats left`
-                        : "Sold out"}
-                    </Badge>
+            {/* every class on the train, each with its own fare and seats */}
+            <ul className="grid gap-3 border-t p-5 sm:grid-cols-[repeat(auto-fit,minmax(13rem,1fr))]">
+              {ordered.map((c) => (
+                <li
+                  key={c.seatType}
+                  className={cn("flex flex-col gap-3 rounded-lg border p-4", c.seatType === seatType && "border-primary")}
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="text-sm font-medium">{CLASS_NAMES[c.seatType]}</span>
+                    <span className="text-lg tabular">{taka(c.fromPrice)}</span>
                   </div>
+                  <span className="text-xs text-muted-foreground tabular">{c.available ? `${c.available} seats left` : "Sold out"}</span>
                   <Button
-                    disabled={!cls.available}
-                    render={<Link href={`/trips/${trip.id}?${q}`} />}
+                    size="sm"
+                    variant={c.seatType === seatType ? "default" : "outline"}
+                    disabled={!c.available}
+                    render={<Link href={link(c.seatType)} />}
                     nativeButton={false}
                   >
                     Choose seats
                   </Button>
-                </>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  No {CLASS_NAMES[seatType]} on this train
-                </p>
-              )}
-            </div>
+                </li>
+              ))}
+            </ul>
           </article>
         );
       })}

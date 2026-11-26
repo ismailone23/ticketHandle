@@ -19,7 +19,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <SessionProvider>
           <SiteHeader />
           <main className="mx-auto w-full max-w-6xl px-4 pt-8 pb-24 sm:px-6">{children}</main>
-          <Toaster position="bottom-center" />
+          <Toaster position="top-right" richColors offset={{ top: 72, right: 24 }} mobileOffset={{ top: 64 }} />
         </SessionProvider>
       </body>
     </html>

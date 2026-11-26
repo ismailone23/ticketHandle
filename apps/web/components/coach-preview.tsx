@@ -14,7 +14,12 @@ const ROWS: S[][] = [
   ["free", "booked", "free", "free"],
 ];
 
-const seat: Record<S, string> = { free: SEAT_LOOK.free, booked: SEAT_LOOK.booked, paying: SEAT_LOOK.paying, yours: SEAT_LOOK.yours };
+const seat: Record<S, string> = {
+  free: SEAT_LOOK.free,
+  booked: SEAT_LOOK.booked,
+  paying: SEAT_LOOK.paying,
+  yours: SEAT_LOOK.yours,
+};
 
 export function CoachPreview() {
   return (
@@ -33,13 +38,19 @@ export function CoachPreview() {
 
       <div className="flex flex-col items-center gap-3 p-5">
         <p className="text-xs text-muted-foreground">Coach KA · Shovan Chair</p>
-        <div aria-hidden className="grid grid-cols-[repeat(2,2.5rem)_1.5rem_repeat(2,2.5rem)] gap-2">
+        <div
+          aria-hidden
+          className="grid grid-cols-[repeat(2,2.5rem)_1.5rem_repeat(2,2.5rem)] gap-2"
+        >
           {ROWS.flatMap((row, r) =>
             row.map((s, c) => (
               <span
                 key={`${r}-${c}`}
                 style={{ gridColumn: c > 1 ? c + 2 : c + 1 }}
-                className={cn("flex size-10 items-center justify-center rounded-md border text-sm tabular", seat[s])}
+                className={cn(
+                  "flex size-10 items-center justify-center rounded-md border text-sm tabular",
+                  seat[s],
+                )}
               >
                 {r * 4 + c + 1}
               </span>
@@ -49,12 +60,19 @@ export function CoachPreview() {
         <SeatLegend className="grid grid-cols-2 gap-x-6 pt-1" />
       </div>
 
-      <div aria-hidden className="flex items-center justify-between gap-3 border-t p-4">
+      <div
+        aria-hidden
+        className="flex items-center justify-between gap-3 border-t p-4"
+      >
         <div className="flex flex-col">
           <span className="text-sm tabular">KA-11 · KA-12</span>
-          <span className="text-xs text-muted-foreground tabular">৳850.50 incl. 5% VAT</span>
+          <span className="text-xs text-muted-foreground tabular">
+            ৳850.50 incl. 5% VAT
+          </span>
         </div>
-        <span className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">Hold 2 seats</span>
+        <span className="rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">
+          Hold 2 seats
+        </span>
       </div>
     </div>
   );
