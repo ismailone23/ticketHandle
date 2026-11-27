@@ -13,3 +13,5 @@ export const memo = <T>(key: string, ttlMs: number, fn: () => Promise<T>): Promi
   );
   return p;
 };
+
+export const forget = (key: string) => store.delete(key);
