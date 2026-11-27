@@ -13,6 +13,10 @@ export const auth = betterAuth({
   baseURL: env.BETTER_AUTH_URL,
   secret: env.BETTER_AUTH_SECRET,
   trustedOrigins: [env.WEB_ORIGIN],
+  // web and API on sibling subdomains: share the session cookie so the web server (admin gate) sees it
+  advanced: {
+    crossSubDomainCookies: { enabled: !!env.COOKIE_DOMAIN, domain: env.COOKIE_DOMAIN },
+  },
 
   database: drizzleAdapter(db, { provider: "pg", schema }),
 

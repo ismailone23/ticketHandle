@@ -5,7 +5,7 @@ import { API_URL } from "@/lib/api";
 
 // Server-side gate: non-admins get a plain 404, so the admin pages are never sent.
 // The API also refuses them (403); this just keeps the screens private.
-// shortcut: relies on the session cookie reaching this server (same host in dev); put web and API under one domain in production
+// Needs the session cookie to reach this server: same host, or COOKIE_DOMAIN set on the API when web and API are sibling subdomains.
 export default async function AdminLayout({
   children,
 }: {

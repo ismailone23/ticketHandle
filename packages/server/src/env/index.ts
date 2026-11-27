@@ -16,6 +16,8 @@ const schema = z.object({
   // test-mode keys from dashboard.stripe.com; payments answer 503 until set
   STRIPE_SECRET_KEY: z.string().startsWith("sk_").optional(),
   STRIPE_WEBHOOK_SECRET: z.string().startsWith("whsec_").optional(),
+  // parent domain for the session cookie, e.g. "ismailh.dev"; leave unset when web and API share a host
+  COOKIE_DOMAIN: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);
