@@ -109,7 +109,9 @@ try {
     }
     return null;
   };
-  const snapshot = await nextEvent("snapshot");
+  // snapshot is the compact map: [{ seats: [[seatNumber, status]] }], status 0 = available
+  const packed = (await nextEvent("snapshot")) as unknown as { seats: [number, number][] }[] | null;
+  const snapshot = packed?.flatMap((c) => c.seats.map(([seatNumber, st]) => ({ seatNumber, status: st === 0 ? "available" : "taken" })));
   check(
     snapshot?.length === 10 && snapshot.every((s) => s.status === "available"),
     "stream snapshot: 10 free seats",

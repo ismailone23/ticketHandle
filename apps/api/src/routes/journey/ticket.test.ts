@@ -17,8 +17,14 @@ import {
 
 afterAll(cleanup);
 
+// unpack the compact seat map: [{ seats: [[seatNumber, status, until?]] }]
+const STATUSES = ["available", "in_progress", "booked"];
 const seatsOf = (tripId: string) =>
-  call(null, "GET", `/trips/${tripId}/seats?seatType=s_chair`).then((r) => r.body.data as { seatNumber: number; status: string }[]);
+  call(null, "GET", `/trips/${tripId}/seats?seatType=s_chair`).then((r) =>
+    (r.body.data as { seats: [number, number, string?][] }[]).flatMap((c) =>
+      c.seats.map(([seatNumber, st, until]) => ({ seatNumber, status: STATUSES[st]!, until })),
+    ),
+  );
 const orderRow = async (id: string) => (await db.select().from(order).where(eq(order.id, id)))[0]!;
 
 describe("search", () => {
@@ -48,6 +54,7 @@ describe("hold", () => {
 
     const map = await seatsOf(t.id);
     expect(map.filter((s) => s.status === "in_progress").map((s) => s.seatNumber)).toEqual([1, 2]);
+    expect(map.filter((s) => s.until).map((s) => s.seatNumber)).toEqual([1, 2]); // hold expiry only on held seats
     expect(JSON.stringify(map)).not.toContain("orderId");
   });
 

@@ -57,6 +57,28 @@ export type Seat = {
   status: SeatStatus;
   until: string | null;
 };
+// seat map as the API sends it (see packSeats in the API); unpackSeats turns it back into Seat[]
+export type PackedCoach = {
+  coach: string;
+  type: SeatType;
+  position: number;
+  price: number;
+  seats: [number, 0 | 1 | 2, string?][];
+};
+const STATUSES: SeatStatus[] = ["available", "in_progress", "booked"];
+export const unpackSeats = (coaches: PackedCoach[]): Seat[] =>
+  coaches.flatMap((c) =>
+    c.seats.map(([seatNumber, status, until]) => ({
+      coachCode: c.coach,
+      seatType: c.type,
+      coachPosition: c.position,
+      price: c.price,
+      seatNumber,
+      status: STATUSES[status]!,
+      until: until ?? null,
+    })),
+  );
+
 export type SearchResult = {
   train: {
     id: string;

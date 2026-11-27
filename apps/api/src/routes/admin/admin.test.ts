@@ -99,10 +99,12 @@ describe("admin routes", () => {
       expect(t.body.data.seats.filter((s: { seatType: string }) => s.seatType === "ac_s")).toHaveLength(5);
 
       // no class given: every class, in coach running order (KA before KHA)
+      type Packed = { coach: string; seats: unknown[] }[];
+      const count = (d: Packed) => d.reduce((n, c) => n + c.seats.length, 0);
       const all = await call(null, "GET", `/trips/${t.body.data.id}/seats`);
-      expect(all.body.data).toHaveLength(15);
-      expect([...new Set(all.body.data.map((x: { coachCode: string }) => x.coachCode))]).toEqual(["KA", "KHA"]);
-      expect((await call(null, "GET", `/trips/${t.body.data.id}/seats?seatType=ac_s`)).body.data).toHaveLength(5);
+      expect(count(all.body.data)).toBe(15);
+      expect([...new Set((all.body.data as Packed).map((c) => c.coach))]).toEqual(["KA", "KHA"]);
+      expect(count((await call(null, "GET", `/trips/${t.body.data.id}/seats?seatType=ac_s`)).body.data)).toBe(5);
 
       const list = await admin("GET", `/trips?trainId=${trainId}`);
       expect(list.body.data[0]).toMatchObject({ id: t.body.data.id, seats: 15, booked: 0, held: 0 });

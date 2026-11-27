@@ -147,6 +147,31 @@ const seatMap = (tripId: string, type?: (typeof seatType.enumValues)[number]) =>
     .where(and(eq(tripSeat.tripId, tripId), type ? eq(tripSeat.seatType, type) : undefined))
     .orderBy(asc(tripSeat.coachPosition), asc(tripSeat.seatNumber));
 
+// Wire format, ~15x smaller than one object per seat (every client gains, compressed or not):
+// [{ coach, type, position, price, seats: [[seatNumber, status, until?]] }]
+// status: 0 available, 1 in_progress, 2 booked; until only on in_progress. Decoder: web lib/api.ts unpackSeats.
+const STATUS_CODE = { available: 0, in_progress: 1, booked: 2 } as const;
+type PackedCoach = {
+  coach: string;
+  type: string;
+  position: number;
+  price: number;
+  seats: (number | string)[][];
+};
+const packSeats = (rows: Awaited<ReturnType<typeof seatMap>>) => {
+  const out: PackedCoach[] = [];
+  let cur: PackedCoach | undefined;
+  // rows come sorted by coach position then seat, so each coach is one run
+  for (const s of rows) {
+    if (!cur || cur.coach !== s.coachCode || cur.type !== s.seatType || cur.price !== s.price)
+      out.push((cur = { coach: s.coachCode, type: s.seatType, position: s.coachPosition, price: s.price, seats: [] }));
+    const seat: (number | string)[] = [s.seatNumber, STATUS_CODE[s.status]];
+    if (s.until) seat.push(s.until);
+    cur.seats.push(seat);
+  }
+  return out;
+};
+
 const seatMapParams = [
   zValidator("param", z.object({ tripId: z.uuid() })),
   zValidator(
@@ -160,7 +185,7 @@ ticketRoute.get("/trips/:tripId/seats", ...seatMapParams, async (c) => {
   const { tripId } = c.req.valid("param");
   const { seatType: type } = c.req.valid("query");
   const body = await memo(`seats:${tripId}:${type ?? "all"}`, 2000, async () =>
-    JSON.stringify({ data: await seatMap(tripId, type) }),
+    JSON.stringify({ data: packSeats(await seatMap(tripId, type)) }),
   );
   return c.body(body, 200, JSON_TYPE);
 });
@@ -196,7 +221,7 @@ ticketRoute.get("/trips/:tripId/seats/stream", ...seatMapParams, (c) => {
     // snapshot after subscribing, so no change is missed
     await stream.writeSSE({
       event: "snapshot",
-      data: JSON.stringify(await seatMap(tripId, type)),
+      data: JSON.stringify(packSeats(await seatMap(tripId, type))),
     });
     for (const seats of pending) await send(seats);
     pending = null;

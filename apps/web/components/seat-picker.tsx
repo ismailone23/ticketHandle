@@ -21,6 +21,8 @@ import {
 } from "@/components/ui/select";
 import {
   seatStreamUrl,
+  unpackSeats,
+  type PackedCoach,
   type ApiError,
   type Order,
   type Seat,
@@ -60,11 +62,11 @@ export function SeatPicker({ tripId }: { tripId: string }) {
         return next;
       });
     // every class at once, so switching class needs no new request
-    request<Seat[]>(`/trips/${tripId}/seats`)
+    request<PackedCoach[]>(`/trips/${tripId}/seats`)
       .then((list) => {
-        put(list, true);
+        put(unpackSeats(list), true);
         es = new EventSource(seatStreamUrl(tripId), { withCredentials: true });
-        es.addEventListener("snapshot", (e) => put(JSON.parse(e.data), true));
+        es.addEventListener("snapshot", (e) => put(unpackSeats(JSON.parse(e.data)), true));
         es.addEventListener("seats", (e) => put(JSON.parse(e.data)));
       })
       .catch((e: ApiError) => setError(e.message));

@@ -36,6 +36,9 @@ export const options = {
   },
 };
 
+// 409 (seat taken) and 429 (hold limit) are correct answers under load, not failures
+http.setResponseCallback(http.expectedStatuses({ min: 200, max: 299 }, 409, 429));
+
 const pick = (xs) => xs[Math.floor(Math.random() * xs.length)];
 
 export default function () {
@@ -60,7 +63,10 @@ export default function () {
   sleep(2 + Math.random() * 4);
 
   if (Math.random() >= HOLD) return;
-  const free = (seats.json("data") || []).filter((s) => s.status === "available");
+  // compact seat map: [{ coach, type, seats: [[seatNumber, status]] }], status 0 = available
+  const free = (seats.json("data") || []).flatMap((c) =>
+    c.seats.filter((x) => x[1] === 0).map((x) => ({ coachCode: c.coach, seatType: c.type, seatNumber: x[0] })),
+  );
   if (!free.length) return;
   const s = pick(free);
   const hold = http.post(
